@@ -349,6 +349,22 @@ TestMain::TestMain() {
         c.emit();
     }
 
+
+    {
+        Signal<R, const A1&, A2> c;
+
+        Obj obj;
+        c.connect(obj, &Obj::nvoid_member2);
+
+        c.connect(&globf::nvoid_fun2);
+        c.connect(&globf::nvoid_fun2);
+        c.disconnect(&globf::nvoid_fun2);
+
+        c.disconnect(obj, &Obj::nvoid_member2);
+
+        std::vector<int> res = c.emit(2, 3.5);
+    }
+
     std::cout << "test finished" << std::endl;
 
 
