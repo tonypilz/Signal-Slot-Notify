@@ -103,68 +103,70 @@ struct Invokable<R> {
 
 //==============struct MemberFunc===================
 
-static const bool Const = true;
-static const bool NotConst = false;
+struct Const{};
+struct NonConst{};
+
+
 
 /**
  * @brief This helper class defines the type of a member function specialized for const / non-const.
  */
-template <typename TObj, bool IsConst, typename R = void, typename A1 = void, typename A2 = void, typename A3 = void, typename A4 = void>
+template <typename TObj, typename Constness, typename R = void, typename A1 = void, typename A2 = void, typename A3 = void, typename A4 = void>
 struct MemberFunc;
 
 template <typename TObj, typename R, typename A1, typename A2, typename A3, typename A4>
-struct MemberFunc<TObj, false, R, A1, A2, A3, A4> {
+struct MemberFunc<TObj, NonConst, R, A1, A2, A3, A4> {
     typedef R (TObj::*type)(A1, A2, A3, A4);
 };
 
 template <typename TObj, typename R, typename A1, typename A2, typename A3>
-struct MemberFunc<TObj, false, R, A1, A2, A3> {
+struct MemberFunc<TObj, NonConst, R, A1, A2, A3> {
     typedef R (TObj::*type)(A1, A2, A3);
 };
 
 template <typename TObj, typename R, typename A1, typename A2>
-struct MemberFunc<TObj, false, R, A1, A2> {
+struct MemberFunc<TObj, NonConst, R, A1, A2> {
     typedef R (TObj::*type)(A1, A2);
 };
 
 template <typename TObj, typename R, typename A1>
-struct MemberFunc<TObj, false, R, A1> {
+struct MemberFunc<TObj, NonConst, R, A1> {
     typedef R (TObj::*type)(A1);
 };
 
 template <typename R, typename TObj>
-struct MemberFunc<TObj, false, R> {
+struct MemberFunc<TObj, NonConst, R> {
     typedef R (TObj::*type)();
 };
 
 template <typename TObj, typename R, typename A1, typename A2, typename A3, typename A4>
-struct MemberFunc<TObj, true, R, A1, A2, A3, A4> {
+struct MemberFunc<TObj, Const, R, A1, A2, A3, A4> {
     typedef R (TObj::*type)(A1, A2, A3, A4) const;
 };
 
 template <typename TObj, typename R, typename A1, typename A2, typename A3>
-struct MemberFunc<TObj, true, R, A1, A2, A3> {
+struct MemberFunc<TObj, Const, R, A1, A2, A3> {
     typedef R (TObj::*type)(A1, A2, A3) const;
 };
 
 template <typename TObj, typename R, typename A1, typename A2>
-struct MemberFunc<TObj, true, R, A1, A2> {
+struct MemberFunc<TObj, Const, R, A1, A2> {
     typedef R (TObj::*type)(A1, A2) const;
 };
 
 template <typename TObj, typename R, typename A1>
-struct MemberFunc<TObj, true, R, A1> {
+struct MemberFunc<TObj, Const, R, A1> {
     typedef R (TObj::*type)(A1) const;
 };
 
 template <typename R, typename TObj>
-struct MemberFunc<TObj, true, R> {
+struct MemberFunc<TObj, Const, R> {
     typedef R (TObj::*type)() const;
 };
 
 
-
-
+struct Default{};
+struct NonDefault{};
 //==============struct CallableImpl===================
 
 /**
@@ -173,10 +175,10 @@ struct MemberFunc<TObj, true, R> {
  */
 template <typename R>
 struct InvokableImpl {
-    static const bool dummy = true;
+
     typedef R R_;
 
-    template <typename A1 = void, typename A2 = void, typename A3 = void, typename A4 = void, typename A5 = void, bool Dummy = dummy>
+    template <typename A1 = void, typename A2 = void, typename A3 = void, typename A4 = void, typename A5 = void, typename isDefault = Default>
     struct GlobalFunction;
 
     template <typename A1, typename A2, typename A3, typename A4>
@@ -227,9 +229,9 @@ struct InvokableImpl {
         Member m_member;
     };
 
-    template <bool Dummy>  // must have at least one template parameter to compile!
-    struct GlobalFunction<void, void, void, void, void, Dummy> : public Invokable<R_> {
-        typedef GlobalFunction<void, void, void, void, void, Dummy> Classtype;
+    template <typename isDefault>  // must have at least one template parameter to compile!
+    struct GlobalFunction<void, void, void, void, void, isDefault> : public Invokable<R_> { //must be non-default!
+        typedef GlobalFunction<void, void, void, void, void, isDefault> Classtype;
         typedef Invokable<R_> Superclass;
         typedef R_ (*Member)();
         virtual R_ operator()() { return m_member(); }
@@ -243,16 +245,16 @@ struct InvokableImpl {
 
 
     //////////////////////////////////////////////////////////
-    template <typename TObj, bool IsConst, typename A1 = void, typename A2 = void, typename A3 = void, typename A4 = void, typename A5 = void>
+    template <typename TObj, typename Constness, typename A1 = void, typename A2 = void, typename A3 = void, typename A4 = void, typename A5 = void>
     struct MemberFunction;
 
-    template <typename TObj, bool IsConst, typename A1, typename A2, typename A3, typename A4>
-    struct MemberFunction<TObj, IsConst, A1, A2, A3, A4> : public Invokable<R_, A1, A2, A3, A4> {
+    template <typename TObj, typename Constness, typename A1, typename A2, typename A3, typename A4>
+    struct MemberFunction<TObj, Constness, A1, A2, A3, A4> : public Invokable<R_, A1, A2, A3, A4> {
 
-        typedef MemberFunction<TObj, IsConst, A1, A2, A3, A4> Classtype;
+        typedef MemberFunction<TObj, Constness, A1, A2, A3, A4> Classtype;
         typedef Invokable<R_, A1, A2, A3, A4> Superclass;
 
-        typedef typename MemberFunc<TObj, IsConst, R_, A1, A2, A3, A4>::type Member;
+        typedef typename MemberFunc<TObj, Constness, R_, A1, A2, A3, A4>::type Member;
 
         virtual R_ operator()(A1 a1, A2 a2, A3 a3, A4 a4) { return (m_obj.*m_member)(a1, a2, a3, a4); }
 
@@ -268,13 +270,13 @@ struct InvokableImpl {
     };
 
 
-    template <typename TObj, bool IsConst, typename A1, typename A2, typename A3>
-    struct MemberFunction<TObj, IsConst, A1, A2, A3> : public Invokable<R_, A1, A2, A3> {
+    template <typename TObj, typename Constness, typename A1, typename A2, typename A3>
+    struct MemberFunction<TObj, Constness, A1, A2, A3> : public Invokable<R_, A1, A2, A3> {
 
-        typedef MemberFunction<TObj, IsConst, A1, A2, A3> Classtype;
+        typedef MemberFunction<TObj, Constness, A1, A2, A3> Classtype;
         typedef Invokable<R_, A1, A2, A3> Superclass;
 
-        typedef typename MemberFunc<TObj, IsConst, R_, A1, A2, A3>::type Member;
+        typedef typename MemberFunc<TObj, Constness, R_, A1, A2, A3>::type Member;
 
         virtual R_ operator()(A1 a1, A2 a2, A3 a3) { return (m_obj.*m_member)(a1, a2, a3); }
 
@@ -288,12 +290,12 @@ struct InvokableImpl {
         TObj& m_obj;
         Member m_member;
     };
-    template <typename TObj, bool IsConst, typename A1, typename A2>
-    struct MemberFunction<TObj, IsConst, A1, A2> : public Invokable<R_, A1, A2> {
+    template <typename TObj, typename Constness, typename A1, typename A2>
+    struct MemberFunction<TObj, Constness, A1, A2> : public Invokable<R_, A1, A2> {
 
-        typedef MemberFunction<TObj, IsConst, A1, A2> Classtype;
+        typedef MemberFunction<TObj, Constness, A1, A2> Classtype;
         typedef Invokable<R_, A1, A2> Superclass;
-        typedef typename MemberFunc<TObj, IsConst, R_, A1, A2>::type Member;
+        typedef typename MemberFunc<TObj, Constness, R_, A1, A2>::type Member;
 
         virtual R_ operator()(A1 a1, A2 a2) { return (m_obj.*m_member)(a1, a2); }
 
@@ -307,13 +309,13 @@ struct InvokableImpl {
         TObj& m_obj;
         Member m_member;
     };
-    template <typename TObj, bool IsConst, typename A1>
-    struct MemberFunction<TObj, IsConst, A1> : public Invokable<R_, A1> {
+    template <typename TObj, typename Constness, typename A1>
+    struct MemberFunction<TObj, Constness, A1> : public Invokable<R_, A1> {
 
-        typedef MemberFunction<TObj, IsConst, A1> Classtype;
+        typedef MemberFunction<TObj, Constness, A1> Classtype;
         typedef Invokable<R_, A1> Superclass;
 
-        typedef typename MemberFunc<TObj, IsConst, R_, A1>::type Member;
+        typedef typename MemberFunc<TObj, Constness, R_, A1>::type Member;
 
         virtual R_ operator()(A1 a1) { return (m_obj.*m_member)(a1); }
 
@@ -327,13 +329,13 @@ struct InvokableImpl {
         TObj& m_obj;
         Member m_member;
     };
-    template <typename TObj, bool IsConst>
-    struct MemberFunction<TObj, IsConst> : public Invokable<R_> {
+    template <typename TObj, typename Constness>
+    struct MemberFunction<TObj, Constness> : public Invokable<R_> {
 
-        typedef MemberFunction<TObj, IsConst> Classtype;
+        typedef MemberFunction<TObj, Constness> Classtype;
         typedef Invokable<R_> Superclass;
 
-        typedef typename MemberFunc<TObj, IsConst, R_>::type Member;
+        typedef typename MemberFunc<TObj, Constness, R_>::type Member;
 
         virtual R_ operator()() { return (m_obj.*m_member)(); }
 
@@ -351,10 +353,9 @@ struct InvokableImpl {
 template <>
 struct InvokableImpl<void> {
 
-    static const bool dummy = true;
     typedef void R_;
 
-    template <typename A1 = void, typename A2 = void, typename A3 = void, typename A4 = void, typename A5 = void, bool Dummy = dummy>
+    template <typename A1 = void, typename A2 = void, typename A3 = void, typename A4 = void, typename A5 = void, typename isDefault = Default>
     struct GlobalFunction;
 
     template <typename A1, typename A2, typename A3, typename A4>
@@ -429,10 +430,10 @@ struct InvokableImpl<void> {
         Member m_member;
     };
 
-    template <bool Dummy>  // must have at least one template parameter to compile!
-    struct GlobalFunction<void, void, void, void, void, Dummy> : public Invokable<R_> {
+    template <typename isDefault>  // must have at least one template parameter to compile!
+    struct GlobalFunction<void, void, void, void, void, isDefault> : public Invokable<R_> { //must be nonDefault
 
-        typedef GlobalFunction<void, void, void, void, void, Dummy> Classtype;
+        typedef GlobalFunction<void, void, void, void, void, isDefault> Classtype;
         typedef Invokable<R_> Superclass;
 
         typedef R_ (*Member)();
@@ -451,16 +452,16 @@ struct InvokableImpl<void> {
     //////////////////////////////////////////////////////////
 
 
-    template <typename TObj, bool IsConst, typename A1 = void, typename A2 = void, typename A3 = void, typename A4 = void, typename A5 = void>
+    template <typename TObj, typename Constness, typename A1 = void, typename A2 = void, typename A3 = void, typename A4 = void, typename A5 = void>
     struct MemberFunction;
 
-    template <typename TObj, bool IsConst, typename A1, typename A2, typename A3, typename A4>
-    struct MemberFunction<TObj, IsConst, A1, A2, A3, A4> : public Invokable<R_, A1, A2, A3, A4> {
+    template <typename TObj, typename Constness, typename A1, typename A2, typename A3, typename A4>
+    struct MemberFunction<TObj, Constness, A1, A2, A3, A4> : public Invokable<R_, A1, A2, A3, A4> {
 
-        typedef MemberFunction<TObj, IsConst, A1, A2, A3, A4> Classtype;
+        typedef MemberFunction<TObj, Constness, A1, A2, A3, A4> Classtype;
         typedef Invokable<R_, A1, A2, A3, A4> Superclass;
 
-        typedef typename MemberFunc<TObj, IsConst, R_, A1, A2, A3, A4>::type Member;
+        typedef typename MemberFunc<TObj, Constness, R_, A1, A2, A3, A4>::type Member;
 
         virtual R_ operator()(A1 a1, A2 a2, A3 a3, A4 a4) { (m_obj.*m_member)(a1, a2, a3, a4); }
 
@@ -475,13 +476,13 @@ struct InvokableImpl<void> {
         Member m_member;
     };
 
-    template <typename TObj, bool IsConst, typename A1, typename A2, typename A3>
-    struct MemberFunction<TObj, IsConst, A1, A2, A3> : public Invokable<R_, A1, A2, A3> {
+    template <typename TObj, typename Constness, typename A1, typename A2, typename A3>
+    struct MemberFunction<TObj, Constness, A1, A2, A3> : public Invokable<R_, A1, A2, A3> {
 
-        typedef MemberFunction<TObj, IsConst, A1, A2, A3> Classtype;
+        typedef MemberFunction<TObj, Constness, A1, A2, A3> Classtype;
         typedef Invokable<R_, A1, A2, A3> Superclass;
 
-        typedef typename MemberFunc<TObj, IsConst, R_, A1, A2, A3>::type Member;
+        typedef typename MemberFunc<TObj, Constness, R_, A1, A2, A3>::type Member;
 
         virtual R_ operator()(A1 a1, A2 a2, A3 a3) { (m_obj.*m_member)(a1, a2, a3); }
 
@@ -496,13 +497,13 @@ struct InvokableImpl<void> {
         Member m_member;
     };
 
-    template <typename TObj, bool IsConst, typename A1, typename A2>
-    struct MemberFunction<TObj, IsConst, A1, A2> : public Invokable<R_, A1, A2> {
+    template <typename TObj, typename Constness, typename A1, typename A2>
+    struct MemberFunction<TObj, Constness, A1, A2> : public Invokable<R_, A1, A2> {
 
-        typedef MemberFunction<TObj, IsConst, A1, A2> Classtype;
+        typedef MemberFunction<TObj, Constness, A1, A2> Classtype;
         typedef Invokable<R_, A1, A2> Superclass;
 
-        typedef typename MemberFunc<TObj, IsConst, R_, A1, A2>::type Member;
+        typedef typename MemberFunc<TObj, Constness, R_, A1, A2>::type Member;
 
         virtual R_ operator()(A1 a1, A2 a2) { (m_obj.*m_member)(a1, a2); }
 
@@ -517,13 +518,13 @@ struct InvokableImpl<void> {
         Member m_member;
     };
 
-    template <typename TObj, bool IsConst, typename A1>
-    struct MemberFunction<TObj, IsConst, A1> : public Invokable<R_, A1> {
+    template <typename TObj, typename Constness, typename A1>
+    struct MemberFunction<TObj, Constness, A1> : public Invokable<R_, A1> {
 
-        typedef MemberFunction<TObj, IsConst, A1> Classtype;
+        typedef MemberFunction<TObj, Constness, A1> Classtype;
         typedef Invokable<R_, A1> Superclass;
 
-        typedef typename MemberFunc<TObj, IsConst, R_, A1>::type Member;
+        typedef typename MemberFunc<TObj, Constness, R_, A1>::type Member;
 
         virtual R_ operator()(A1 a1) { (m_obj.*m_member)(a1); }
 
@@ -538,13 +539,13 @@ struct InvokableImpl<void> {
         Member m_member;
     };
 
-    template <typename TObj, bool IsConst>
-    struct MemberFunction<TObj, IsConst> : public Invokable<R_> {
+    template <typename TObj, typename Constness>
+    struct MemberFunction<TObj, Constness> : public Invokable<R_> {
 
-        typedef MemberFunction<TObj, IsConst> Classtype;
+        typedef MemberFunction<TObj, Constness> Classtype;
         typedef Invokable<R_> Superclass;
 
-        typedef typename MemberFunc<TObj, IsConst, R_>::type Member;
+        typedef typename MemberFunc<TObj, Constness, R_>::type Member;
 
         virtual R_ operator()() { (m_obj.*m_member)(); }
 
@@ -689,7 +690,7 @@ struct Signal<R(A1, A2, A3, A4)> {
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1, A2, A3, A4)) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,detail::NotConst>::type MCaller_;
+        typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
         slots.push_back(new MCaller_(obj, member));
     }
 
@@ -717,7 +718,7 @@ struct Signal<R(A1, A2, A3, A4)> {
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)(A1, A2, A3, A4)) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,detail::NotConst>::type MCaller_;
+        typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
         detail::remove(slots,MCaller_(obj,member));
     }
 
@@ -741,8 +742,8 @@ struct Signal<R(A1, A2, A3, A4)> {
 
     typedef typename detail::InvokableImpl<R>::template GlobalFunction<A1, A2, A3, A4> GCaller;
 
-    template <typename TObj, bool IsConst>
-    struct MCaller{ typedef typename detail::InvokableImpl<R>::template MemberFunction<TObj, IsConst, A1, A2, A3, A4> type; };
+    template <typename TObj, typename Constness>
+    struct MCaller{ typedef typename detail::InvokableImpl<R>::template MemberFunction<TObj, Constness, A1, A2, A3, A4> type; };
 
     typedef detail::Invokable<R, A1, A2, A3, A4> Slot;
     typedef typename detail::SlotContainer<Slot*>::type Slots;
@@ -768,7 +769,7 @@ struct Signal<R(A1, A2, A3)> {
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1, A2, A3)) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,detail::NotConst>::type MCaller_;
+        typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
         slots.push_back(new MCaller_(obj, member));
     }
 
@@ -796,7 +797,7 @@ struct Signal<R(A1, A2, A3)> {
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)(A1, A2, A3)) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,detail::NotConst>::type MCaller_;
+        typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
         detail::remove(slots,MCaller_(obj,member));
     }
 
@@ -820,8 +821,8 @@ struct Signal<R(A1, A2, A3)> {
 
     typedef typename detail::InvokableImpl<R>::template GlobalFunction<A1, A2, A3> GCaller;
 
-    template <typename TObj, bool IsConst>
-    struct MCaller{ typedef typename detail::InvokableImpl<R>::template MemberFunction<TObj, IsConst, A1, A2, A3> type; };
+    template <typename TObj, typename Constness>
+    struct MCaller{ typedef typename detail::InvokableImpl<R>::template MemberFunction<TObj, Constness, A1, A2, A3> type; };
 
     typedef detail::Invokable<R, A1, A2, A3> Slot;
     typedef typename detail::SlotContainer<Slot*>::type Slots;
@@ -848,7 +849,7 @@ struct Signal<R(A1, A2)> {
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1, A2)) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,detail::NotConst>::type MCaller_;
+        typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
         slots.push_back(new MCaller_(obj, member));
     }
 
@@ -876,7 +877,7 @@ struct Signal<R(A1, A2)> {
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)(A1, A2)) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,detail::NotConst>::type MCaller_;
+        typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
         detail::remove(slots,MCaller_(obj,member));
     }
 
@@ -900,8 +901,8 @@ struct Signal<R(A1, A2)> {
 
     typedef typename detail::InvokableImpl<R>::template GlobalFunction<A1, A2> GCaller;
 
-    template <typename TObj, bool IsConst>
-    struct MCaller{ typedef typename detail::InvokableImpl<R>::template MemberFunction<TObj, IsConst, A1, A2> type; };
+    template <typename TObj, typename Constness>
+    struct MCaller{ typedef typename detail::InvokableImpl<R>::template MemberFunction<TObj, Constness, A1, A2> type; };
 
     typedef detail::Invokable<R, A1, A2> Slot;
     typedef typename detail::SlotContainer<Slot*>::type Slots;
@@ -928,7 +929,7 @@ struct Signal<R(A1)> {
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1)) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,detail::NotConst>::type MCaller_;
+        typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
         slots.push_back(new MCaller_(obj, member));
     }
 
@@ -956,7 +957,7 @@ struct Signal<R(A1)> {
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)(A1)) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,detail::NotConst>::type MCaller_;
+        typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
         detail::remove(slots,MCaller_(obj,member));
     }
 
@@ -980,8 +981,8 @@ struct Signal<R(A1)> {
 
     typedef typename detail::InvokableImpl<R>::template GlobalFunction<A1> GCaller;
 
-    template <typename TObj, bool IsConst>
-    struct MCaller{ typedef typename detail::InvokableImpl<R>::template MemberFunction<TObj, IsConst, A1> type; };
+    template <typename TObj, typename Constness>
+    struct MCaller{ typedef typename detail::InvokableImpl<R>::template MemberFunction<TObj, Constness, A1> type; };
 
     typedef detail::Invokable<R, A1> Slot;
     typedef typename detail::SlotContainer<Slot*>::type Slots;
@@ -1008,7 +1009,7 @@ struct Signal<R()> {
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)()) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,detail::NotConst>::type MCaller_;
+        typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
         slots.push_back(new MCaller_(obj, member));
     }
 
@@ -1035,7 +1036,7 @@ struct Signal<R()> {
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)()) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,detail::NotConst>::type MCaller_;
+        typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
         detail::remove(slots,MCaller_(obj,member));
     }
 
@@ -1057,11 +1058,10 @@ struct Signal<R()> {
 
    private:
 
-    static const bool dummy = false;
-    typedef typename detail::InvokableImpl<R>::template GlobalFunction<void, void, void, void, void, dummy> GCaller;
+    typedef typename detail::InvokableImpl<R>::template GlobalFunction<void, void, void, void, void, detail::NonDefault> GCaller;
 
-    template <typename TObj, bool IsConst>
-    struct MCaller{ typedef typename detail::InvokableImpl<R>::template MemberFunction<TObj, IsConst > type; };
+    template <typename TObj, typename Constness>
+    struct MCaller{ typedef typename detail::InvokableImpl<R>::template MemberFunction<TObj, Constness > type; };
 
     typedef detail::Invokable<R> Slot;
     typedef typename detail::SlotContainer<Slot*>::type Slots;

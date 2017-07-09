@@ -356,7 +356,7 @@ void testInvokableMemberFunctions_nvoid_overload(){
     {
         const int fid = 2;
         Obj obj;
-        detail::InvokableImpl<R>::MemberFunction<Obj,detail::NotConst,A1 const&,A2> f(obj,&Obj::nvoid_fun2);
+        detail::InvokableImpl<R>::MemberFunction<Obj,detail::NonConst,A1 const&,A2> f(obj,&Obj::nvoid_fun2);
         state::reset();
         R r = f(state::a1_ndefault, state::a2_ndefault);
         assert(state::id == state::id_default_sqr_pp + Obj::offset + fid + state::nvoid_id + state::arg_const_id);
@@ -441,7 +441,7 @@ void testInvokableGlobalFunctions_nvoid(){
 
     {
         const int fid = 0;
-        detail::InvokableImpl<R>::GlobalFunction<void, void, void, void, void, false> f(pureFunctions::nvoid_fun0);
+        detail::InvokableImpl<R>::GlobalFunction<void, void, void, void, void, detail::NonDefault> f(pureFunctions::nvoid_fun0);
         state::reset();
         R r = f();
         assert(state::id == state::id_default_sqr_pp + pureFunctions::offset + fid + state::nvoid_id);
@@ -505,7 +505,7 @@ void testInvokableGlobalFunctions_void(){
 
     {
         const int fid = 0;
-        detail::InvokableImpl<void>::GlobalFunction<void, void, void, void, void, false> f(pureFunctions::fun0);
+        detail::InvokableImpl<void>::GlobalFunction<void, void, void, void, void, detail::NonDefault> f(pureFunctions::fun0);
         state::reset();
         f();
         assert(state::id == state::id_default_sqr_pp + pureFunctions::offset + fid );
@@ -522,7 +522,7 @@ void testInvokableMemberFunctions_nvoid(){
     {
         const int fid = 4;
         Obj obj;
-        detail::InvokableImpl<R>::MemberFunction<Obj,detail::NotConst,A1,A2,A3,A4> f(obj,&Obj::nvoid_fun4);
+        detail::InvokableImpl<R>::MemberFunction<Obj,detail::NonConst,A1,A2,A3,A4> f(obj,&Obj::nvoid_fun4);
         state::reset();
         R r = f(state::a1_ndefault, state::a2_ndefault, state::a3_ndefault, state::a4_ndefault);
         assert(state::id == state::id_default_sqr_pp + Obj::offset + fid + state::nvoid_id);
@@ -535,7 +535,7 @@ void testInvokableMemberFunctions_nvoid(){
     {
         const int fid = 3;
         Obj obj;
-        detail::InvokableImpl<R>::MemberFunction<Obj,detail::NotConst,A1,A2,A3> f(obj,&Obj::nvoid_fun3);
+        detail::InvokableImpl<R>::MemberFunction<Obj,detail::NonConst,A1,A2,A3> f(obj,&Obj::nvoid_fun3);
         state::reset();
         R r = f(state::a1_ndefault, state::a2_ndefault, state::a3_ndefault);
         assert(state::id == state::id_default_sqr_pp + Obj::offset + fid + state::nvoid_id);
@@ -548,7 +548,7 @@ void testInvokableMemberFunctions_nvoid(){
     {
         const int fid = 2;
         Obj obj;
-        detail::InvokableImpl<R>::MemberFunction<Obj,detail::NotConst,A1,A2> f(obj,&Obj::nvoid_fun2);
+        detail::InvokableImpl<R>::MemberFunction<Obj,detail::NonConst,A1,A2> f(obj,&Obj::nvoid_fun2);
         state::reset();
         R r = f(state::a1_ndefault, state::a2_ndefault);
         assert(state::id == state::id_default_sqr_pp + Obj::offset + fid + state::nvoid_id);
@@ -561,7 +561,7 @@ void testInvokableMemberFunctions_nvoid(){
     {
         const int fid = 1;
         Obj obj;
-        detail::InvokableImpl<R>::MemberFunction<Obj,detail::NotConst,A1> f(obj,&Obj::nvoid_fun1);
+        detail::InvokableImpl<R>::MemberFunction<Obj,detail::NonConst,A1> f(obj,&Obj::nvoid_fun1);
         state::reset();
         R r = f(state::a1_ndefault);
         assert(state::id == state::id_default_sqr_pp + Obj::offset + fid + state::nvoid_id);
@@ -574,7 +574,7 @@ void testInvokableMemberFunctions_nvoid(){
     {
         const int fid = 0;
         Obj obj;
-        detail::InvokableImpl<R>::MemberFunction<Obj,detail::NotConst> f(obj,&Obj::nvoid_fun0);
+        detail::InvokableImpl<R>::MemberFunction<Obj,detail::NonConst> f(obj,&Obj::nvoid_fun0);
         state::reset();
         R r = f();
         assert(state::id == state::id_default_sqr_pp + Obj::offset + fid + state::nvoid_id);
@@ -590,7 +590,7 @@ void testInvokableMemberFunctions_void(){
     {
         const int fid = 4;
         Obj obj;
-        detail::InvokableImpl<void>::MemberFunction<Obj,detail::NotConst,A1,A2,A3,A4> f(obj,&Obj::fun4);
+        detail::InvokableImpl<void>::MemberFunction<Obj,detail::NonConst,A1,A2,A3,A4> f(obj,&Obj::fun4);
         state::reset();
         f(state::a1_ndefault, state::a2_ndefault, state::a3_ndefault, state::a4_ndefault);
         assert(state::id == state::id_default_sqr_pp + Obj::offset + fid);
@@ -603,7 +603,7 @@ void testInvokableMemberFunctions_void(){
     {
         const int fid = 3;
         Obj obj;
-        detail::InvokableImpl<void>::MemberFunction<Obj,detail::NotConst,A1,A2,A3> f(obj,&Obj::fun3);
+        detail::InvokableImpl<void>::MemberFunction<Obj,detail::NonConst,A1,A2,A3> f(obj,&Obj::fun3);
         state::reset();
         f(state::a1_ndefault, state::a2_ndefault, state::a3_ndefault);
         assert(state::id == state::id_default_sqr_pp + Obj::offset + fid);
@@ -616,7 +616,7 @@ void testInvokableMemberFunctions_void(){
     {
         const int fid = 2;
         Obj obj;
-        detail::InvokableImpl<void>::MemberFunction<Obj,detail::NotConst,A1,A2> f(obj,&Obj::fun2);
+        detail::InvokableImpl<void>::MemberFunction<Obj,detail::NonConst,A1,A2> f(obj,&Obj::fun2);
         state::reset();
         f(state::a1_ndefault, state::a2_ndefault);
         assert(state::id == state::id_default_sqr_pp + Obj::offset + fid);
@@ -629,7 +629,7 @@ void testInvokableMemberFunctions_void(){
     {
         const int fid = 1;
         Obj obj;
-        detail::InvokableImpl<void>::MemberFunction<Obj,detail::NotConst,A1> f(obj,&Obj::fun1);
+        detail::InvokableImpl<void>::MemberFunction<Obj,detail::NonConst,A1> f(obj,&Obj::fun1);
         state::reset();
         f(state::a1_ndefault);
         assert(state::id == state::id_default_sqr_pp + Obj::offset + fid);
@@ -642,7 +642,7 @@ void testInvokableMemberFunctions_void(){
     {
         const int fid = 0;
         Obj obj;
-        detail::InvokableImpl<void>::MemberFunction<Obj,detail::NotConst> f(obj,&Obj::fun0);
+        detail::InvokableImpl<void>::MemberFunction<Obj,detail::NonConst> f(obj,&Obj::fun0);
         state::reset();
         f();
         assert(state::id == state::id_default_sqr_pp + Obj::offset + fid);
@@ -658,7 +658,7 @@ void testInvokableStaticMemberFunctions_void(){
 
     {
         const int fid = 0;
-        detail::InvokableImpl<void>::GlobalFunction<void, void, void, void, void, false> f(Obj::smember);
+        detail::InvokableImpl<void>::GlobalFunction<void, void, void, void, void, detail::NonDefault> f(Obj::smember);
         state::reset();
         f();
         assert(state::id == state::id_default_sqr_pp + Obj::offset + fid +  state::static_id);
