@@ -5,6 +5,8 @@
 
 namespace sisl {  // signal slot
 
+namespace detail {
+
 
 
 //==============types for customization===================
@@ -655,7 +657,7 @@ struct ReturnValueCollector<void> {
 };
 
 
-
+} //namespace detail
 
 //==============struct Signal===================
 
@@ -666,6 +668,8 @@ template <typename R, typename A1, typename A2, typename A3,typename A4>
 struct Signal<R(A1, A2, A3, A4)> {
 
 
+
+
     void connect(R (*member)(A1, A2, A3, A4)) {
         ScopedLock_ lock(slotsMutex);
         slots.push_back(new GCaller(member));
@@ -674,7 +678,7 @@ struct Signal<R(A1, A2, A3, A4)> {
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1, A2, A3, A4)) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,NotConst>::type MCaller_;
+        typedef typename MCaller<TObj,detail::NotConst>::type MCaller_;
         slots.push_back(new MCaller_(obj, member));
     }
 
@@ -682,35 +686,35 @@ struct Signal<R(A1, A2, A3, A4)> {
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1, A2, A3, A4) const) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,Const>::type MCaller_;
+        typedef typename MCaller<TObj,detail::Const>::type MCaller_;
         slots.push_back(new MCaller_(obj, member));
     }
 
-    OutType<R> emit(A1 a1, A2 a2, A3 a3, A4 a4) {
+    detail::OutType<R> emit(A1 a1, A2 a2, A3 a3, A4 a4) {
         ScopedLock_ lock(slotsMutex);
-        OutType<R> r;
+        detail::OutType<R> r;
         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
-            ReturnValueCollector<R>::template callAndCollect<A1, A2, A3, A4>(r, *it, a1, a2, a3, a4);
+            detail::ReturnValueCollector<R>::template callAndCollect<A1, A2, A3, A4>(r, *it, a1, a2, a3, a4);
         return r;
     }
 
     void disconnect(R (*member)(A1, A2, A3, A4)) {
         ScopedLock_ lock(slotsMutex);
-        remove(slots,GCaller(member));
+        detail::remove(slots,GCaller(member));
     }
 
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)(A1, A2, A3, A4)) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,NotConst>::type MCaller_;
-        remove(slots,MCaller_(obj,member));
+        typedef typename MCaller<TObj,detail::NotConst>::type MCaller_;
+        detail::remove(slots,MCaller_(obj,member));
     }
 
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)(A1, A2, A3, A4) const) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,Const>::type MCaller_;
-        remove(slots,MCaller_(obj,member));
+        typedef typename MCaller<TObj,detail::Const>::type MCaller_;
+        detail::remove(slots,MCaller_(obj,member));
     }
 
     void disconnectAll(){
@@ -724,18 +728,18 @@ struct Signal<R(A1, A2, A3, A4)> {
 
    private:
 
-    typedef typename InvokableImpl<R>::template GlobalFunction<A1, A2, A3, A4> GCaller;
+    typedef typename detail::InvokableImpl<R>::template GlobalFunction<A1, A2, A3, A4> GCaller;
 
     template <typename TObj, bool IsConst>
-    struct MCaller{ typedef typename InvokableImpl<R>::template MemberFunction<TObj, IsConst, A1, A2, A3, A4> type; };
+    struct MCaller{ typedef typename detail::InvokableImpl<R>::template MemberFunction<TObj, IsConst, A1, A2, A3, A4> type; };
 
-    typedef Invokable<R, A1, A2, A3, A4> Slot;
-    typedef typename SlotContainer<Slot*>::type Slots;
+    typedef detail::Invokable<R, A1, A2, A3, A4> Slot;
+    typedef typename detail::SlotContainer<Slot*>::type Slots;
     typedef typename Slots::iterator SlotsIt;
     typedef typename Slots::const_iterator SlotsCIt;
 
-    typedef Mutex::type Mutex_;
-    typedef ScopedLock::type ScopedLock_;
+    typedef detail::Mutex::type Mutex_;
+    typedef detail::ScopedLock::type ScopedLock_;
 
     Slots slots;
     Mutex_ slotsMutex;
@@ -753,7 +757,7 @@ struct Signal<R(A1, A2, A3)> {
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1, A2, A3)) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,NotConst>::type MCaller_;
+        typedef typename MCaller<TObj,detail::NotConst>::type MCaller_;
         slots.push_back(new MCaller_(obj, member));
     }
 
@@ -761,35 +765,35 @@ struct Signal<R(A1, A2, A3)> {
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1, A2, A3) const) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,Const>::type MCaller_;
+        typedef typename MCaller<TObj,detail::Const>::type MCaller_;
         slots.push_back(new MCaller_(obj, member));
     }
 
-    OutType<R> emit(A1 a1, A2 a2, A3 a3) {
+    detail::OutType<R> emit(A1 a1, A2 a2, A3 a3) {
         ScopedLock_ lock(slotsMutex);
-        OutType<R> r;
+        detail::OutType<R> r;
         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
-            ReturnValueCollector<R>::template callAndCollect<A1, A2, A3>(r, *it, a1, a2, a3);
+            detail::ReturnValueCollector<R>::template callAndCollect<A1, A2, A3>(r, *it, a1, a2, a3);
         return r;
     }
 
     void disconnect(R (*member)(A1, A2, A3)) {
         ScopedLock_ lock(slotsMutex);
-        remove(slots,GCaller(member));
+        detail::remove(slots,GCaller(member));
     }
 
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)(A1, A2, A3)) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,NotConst>::type MCaller_;
-        remove(slots,MCaller_(obj,member));
+        typedef typename MCaller<TObj,detail::NotConst>::type MCaller_;
+        detail::remove(slots,MCaller_(obj,member));
     }
 
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)(A1, A2, A3) const) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,Const>::type MCaller_;
-        remove(slots,MCaller_(obj,member));
+        typedef typename MCaller<TObj,detail::Const>::type MCaller_;
+        detail::remove(slots,MCaller_(obj,member));
     }
 
     void disconnectAll(){
@@ -803,18 +807,18 @@ struct Signal<R(A1, A2, A3)> {
 
    private:
 
-    typedef typename InvokableImpl<R>::template GlobalFunction<A1, A2, A3> GCaller;
+    typedef typename detail::InvokableImpl<R>::template GlobalFunction<A1, A2, A3> GCaller;
 
     template <typename TObj, bool IsConst>
-    struct MCaller{ typedef typename InvokableImpl<R>::template MemberFunction<TObj, IsConst, A1, A2, A3> type; };
+    struct MCaller{ typedef typename detail::InvokableImpl<R>::template MemberFunction<TObj, IsConst, A1, A2, A3> type; };
 
-    typedef Invokable<R, A1, A2, A3> Slot;
-    typedef typename SlotContainer<Slot*>::type Slots;
+    typedef detail::Invokable<R, A1, A2, A3> Slot;
+    typedef typename detail::SlotContainer<Slot*>::type Slots;
     typedef typename Slots::iterator SlotsIt;
     typedef typename Slots::const_iterator SlotsCIt;
 
-    typedef Mutex::type Mutex_;
-    typedef ScopedLock::type ScopedLock_;
+    typedef detail::Mutex::type Mutex_;
+    typedef detail::ScopedLock::type ScopedLock_;
 
     Slots slots;
     Mutex_ slotsMutex;
@@ -833,7 +837,7 @@ struct Signal<R(A1, A2)> {
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1, A2)) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,NotConst>::type MCaller_;
+        typedef typename MCaller<TObj,detail::NotConst>::type MCaller_;
         slots.push_back(new MCaller_(obj, member));
     }
 
@@ -841,35 +845,35 @@ struct Signal<R(A1, A2)> {
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1, A2) const) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,Const>::type MCaller_;
+        typedef typename MCaller<TObj,detail::Const>::type MCaller_;
         slots.push_back(new MCaller_(obj, member));
     }
 
-    OutType<R> emit(A1 a1, A2 a2) {
+    detail::OutType<R> emit(A1 a1, A2 a2) {
         ScopedLock_ lock(slotsMutex);
-        OutType<R> r;
+        detail::OutType<R> r;
         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
-            ReturnValueCollector<R>::template callAndCollect<A1, A2>(r, *it, a1, a2);
+            detail::ReturnValueCollector<R>::template callAndCollect<A1, A2>(r, *it, a1, a2);
         return r;
     }
 
     void disconnect(R (*member)(A1, A2)) {
         ScopedLock_ lock(slotsMutex);
-        remove(slots,GCaller(member));
+        detail::remove(slots,GCaller(member));
     }
 
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)(A1, A2)) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,NotConst>::type MCaller_;
-        remove(slots,MCaller_(obj,member));
+        typedef typename MCaller<TObj,detail::NotConst>::type MCaller_;
+        detail::remove(slots,MCaller_(obj,member));
     }
 
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)(A1, A2) const) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,Const>::type MCaller_;
-        remove(slots,MCaller_(obj,member));
+        typedef typename MCaller<TObj,detail::Const>::type MCaller_;
+        detail::remove(slots,MCaller_(obj,member));
     }
 
     void disconnectAll(){
@@ -883,18 +887,18 @@ struct Signal<R(A1, A2)> {
 
    private:
 
-    typedef typename InvokableImpl<R>::template GlobalFunction<A1, A2> GCaller;
+    typedef typename detail::InvokableImpl<R>::template GlobalFunction<A1, A2> GCaller;
 
     template <typename TObj, bool IsConst>
-    struct MCaller{ typedef typename InvokableImpl<R>::template MemberFunction<TObj, IsConst, A1, A2> type; };
+    struct MCaller{ typedef typename detail::InvokableImpl<R>::template MemberFunction<TObj, IsConst, A1, A2> type; };
 
-    typedef Invokable<R, A1, A2> Slot;
-    typedef typename SlotContainer<Slot*>::type Slots;
+    typedef detail::Invokable<R, A1, A2> Slot;
+    typedef typename detail::SlotContainer<Slot*>::type Slots;
     typedef typename Slots::iterator SlotsIt;
     typedef typename Slots::const_iterator SlotsCIt;
 
-    typedef Mutex::type Mutex_;
-    typedef ScopedLock::type ScopedLock_;
+    typedef detail::Mutex::type Mutex_;
+    typedef detail::ScopedLock::type ScopedLock_;
 
     Slots slots;
     Mutex_ slotsMutex;
@@ -913,7 +917,7 @@ struct Signal<R(A1)> {
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1)) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,NotConst>::type MCaller_;
+        typedef typename MCaller<TObj,detail::NotConst>::type MCaller_;
         slots.push_back(new MCaller_(obj, member));
     }
 
@@ -921,35 +925,35 @@ struct Signal<R(A1)> {
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1) const) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,Const>::type MCaller_;
+        typedef typename MCaller<TObj,detail::Const>::type MCaller_;
         slots.push_back(new MCaller_(obj, member));
     }
 
-    OutType<R> emit(A1 a1) {
+    detail::OutType<R> emit(A1 a1) {
         ScopedLock_ lock(slotsMutex);
-        OutType<R> r;
+        detail::OutType<R> r;
         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
-            ReturnValueCollector<R>::template callAndCollect<A1>(r, *it, a1);
+            detail::ReturnValueCollector<R>::template callAndCollect<A1>(r, *it, a1);
         return r;
     }
 
     void disconnect(R (*member)(A1)) {
         ScopedLock_ lock(slotsMutex);
-        remove(slots,GCaller(member));
+        detail::remove(slots,GCaller(member));
     }
 
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)(A1)) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,NotConst>::type MCaller_;
-        remove(slots,MCaller_(obj,member));
+        typedef typename MCaller<TObj,detail::NotConst>::type MCaller_;
+        detail::remove(slots,MCaller_(obj,member));
     }
 
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)(A1) const) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,Const>::type MCaller_;
-        remove(slots,MCaller_(obj,member));
+        typedef typename MCaller<TObj,detail::Const>::type MCaller_;
+        detail::remove(slots,MCaller_(obj,member));
     }
 
     void disconnectAll(){
@@ -963,18 +967,18 @@ struct Signal<R(A1)> {
 
    private:
 
-    typedef typename InvokableImpl<R>::template GlobalFunction<A1> GCaller;
+    typedef typename detail::InvokableImpl<R>::template GlobalFunction<A1> GCaller;
 
     template <typename TObj, bool IsConst>
-    struct MCaller{ typedef typename InvokableImpl<R>::template MemberFunction<TObj, IsConst, A1> type; };
+    struct MCaller{ typedef typename detail::InvokableImpl<R>::template MemberFunction<TObj, IsConst, A1> type; };
 
-    typedef Invokable<R, A1> Slot;
-    typedef typename SlotContainer<Slot*>::type Slots;
+    typedef detail::Invokable<R, A1> Slot;
+    typedef typename detail::SlotContainer<Slot*>::type Slots;
     typedef typename Slots::iterator SlotsIt;
     typedef typename Slots::const_iterator SlotsCIt;
 
-    typedef Mutex::type Mutex_;
-    typedef ScopedLock::type ScopedLock_;
+    typedef detail::Mutex::type Mutex_;
+    typedef detail::ScopedLock::type ScopedLock_;
 
     Slots slots;
     Mutex_ slotsMutex;
@@ -993,7 +997,7 @@ struct Signal<R()> {
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)()) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,NotConst>::type MCaller_;
+        typedef typename MCaller<TObj,detail::NotConst>::type MCaller_;
         slots.push_back(new MCaller_(obj, member));
     }
 
@@ -1001,35 +1005,35 @@ struct Signal<R()> {
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)() const) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,Const>::type MCaller_;
+        typedef typename MCaller<TObj,detail::Const>::type MCaller_;
         slots.push_back(new MCaller_(obj, member));
     }
 
-    OutType<R> emit() {
+    detail::OutType<R> emit() {
         ScopedLock_ lock(slotsMutex);
-        OutType<R> r;
+        detail::OutType<R> r;
         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
-            ReturnValueCollector<R>::callAndCollect(r, *it);
+            detail::ReturnValueCollector<R>::callAndCollect(r, *it);
         return r;
     }
 
     void disconnect(R (*member)()) {
         ScopedLock_ lock(slotsMutex);
-        remove(slots,GCaller(member));
+        detail::remove(slots,GCaller(member));
     }
 
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)()) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,NotConst>::type MCaller_;
-        remove(slots,MCaller_(obj,member));
+        typedef typename MCaller<TObj,detail::NotConst>::type MCaller_;
+        detail::remove(slots,MCaller_(obj,member));
     }
 
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)() const) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,Const>::type MCaller_;
-        remove(slots,MCaller_(obj,member));
+        typedef typename MCaller<TObj,detail::Const>::type MCaller_;
+        detail::remove(slots,MCaller_(obj,member));
     }
 
     void disconnectAll(){
@@ -1044,18 +1048,18 @@ struct Signal<R()> {
    private:
 
     static const bool dummy = false;
-    typedef typename InvokableImpl<R>::template GlobalFunction<void, void, void, void, void, dummy> GCaller;
+    typedef typename detail::InvokableImpl<R>::template GlobalFunction<void, void, void, void, void, dummy> GCaller;
 
     template <typename TObj, bool IsConst>
-    struct MCaller{ typedef typename InvokableImpl<R>::template MemberFunction<TObj, IsConst > type; };
+    struct MCaller{ typedef typename detail::InvokableImpl<R>::template MemberFunction<TObj, IsConst > type; };
 
-    typedef Invokable<R> Slot;
-    typedef typename SlotContainer<Slot*>::type Slots;
+    typedef detail::Invokable<R> Slot;
+    typedef typename detail::SlotContainer<Slot*>::type Slots;
     typedef typename Slots::iterator SlotsIt;
     typedef typename Slots::const_iterator SlotsCIt;
 
-    typedef Mutex::type Mutex_;
-    typedef ScopedLock::type ScopedLock_;
+    typedef detail::Mutex::type Mutex_;
+    typedef detail::ScopedLock::type ScopedLock_;
 
     Slots slots;
     Mutex_ slotsMutex;
