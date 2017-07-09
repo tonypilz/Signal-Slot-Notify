@@ -564,7 +564,22 @@ struct IsEqual {
 
 template<typename Slots, typename TCaller>
 void remove(Slots& slots, TCaller const& caller){
-    slots.erase(std::remove_if(slots.begin(),slots.end(), IsEqual<TCaller>(caller)), slots.end()); //todo call for delete
+    typedef typename Slots::iterator It;
+
+    IsEqual<TCaller> pred(caller);
+
+    Slots toDelete;
+
+
+    for(It it = slots.begin(), end = slots.end();it!=end;++it)
+        if (pred(*it))
+            toDelete.push_back(*it);
+
+
+    slots.erase(std::remove_if(slots.begin(),slots.end(), IsEqual<TCaller>(caller)), slots.end());
+
+    for(It it = toDelete.begin(), end = toDelete.end();it!=end;++it)
+        delete *it;
 }
 
 
