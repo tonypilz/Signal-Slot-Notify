@@ -9,5 +9,6 @@ SOURCES += main.cpp \
 
 HEADERS += \
     ./include/signal_slot.h \
-    ./testing/TestMain.h
+    ./testing/TestMain.h \
+    CompilerExplorerRunMethod.h
 
