@@ -2,16 +2,8 @@
 
 #include <testing/TestMain.h>
 
-//todo
 
-//tests, mutex, clear slots, delete slots, code formating
-//destructor delete objects
-//code comments
-//type traits
-//return aggregation customization
-//disable c++2011
-
-
+//todo: disable c++2011 in qtcreator project settings
 
 
 int main()

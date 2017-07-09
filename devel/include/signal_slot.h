@@ -17,10 +17,14 @@ struct SlotContainer {
 };
 
 template <typename TResult>
-struct ResultContainerType {
+struct ReturnValueAggregateContainerType {
     typedef std::vector<TResult> type;
 };
 
+/**
+ * @brief The LockingDisabled struct is a locking implementation
+ * which does nothing which is the default synchronization behaviour.
+ */
 struct LockingDisabled{
     struct Mutex{};
     struct ScopedLock{ScopedLock(Mutex const&){}};
@@ -40,12 +44,13 @@ struct Mutex{
 
 
 
-//==============struct OutType===================
-
+/**
+ * @brief Instances of this struct represent the aggregated return values
+ */
 template <typename R>
-struct OutType {
+struct ReturnValueAggregate {
 
-    typedef typename ResultContainerType<R>::type type;
+    typedef typename ReturnValueAggregateContainerType<R>::type type;
 
     operator type() const { return out; }
 
@@ -53,10 +58,13 @@ struct OutType {
 };
 
 template <>
-struct OutType<void> {};
+struct ReturnValueAggregate<void> {};
 
 
-//==============struct Invokable===================
+
+/**
+ * @brief This interface represents an abstract call.
+ */
 
 template <typename R = void, typename A1 = void, typename A2 = void, typename A3 = void, typename A4 = void, typename A5 = void>
 struct Invokable;
@@ -98,6 +106,9 @@ struct Invokable<R> {
 static const bool Const = true;
 static const bool NotConst = false;
 
+/**
+ * @brief This helper class defines the type of a member function specialized for const / non-const.
+ */
 template <typename TObj, bool IsConst, typename R = void, typename A1 = void, typename A2 = void, typename A3 = void, typename A4 = void>
 struct MemberFunc;
 
@@ -156,6 +167,10 @@ struct MemberFunc<TObj, true, R> {
 
 //==============struct CallableImpl===================
 
+/**
+ * @brief The struct CallableImpl contains conrcrete
+ * implementations of the Invokable-inferface specializing void and non-void cases
+ */
 template <typename R>
 struct InvokableImpl {
     static const bool dummy = true;
@@ -494,7 +509,7 @@ struct InvokableImpl<void> {
         MemberFunction(TObj& obj, Member member) : m_obj(obj), m_member(member) {}
 
         bool isEqual(Classtype const& other)const{
-            return (m_obj == other.m_obj) && (m_member == other.m_member);
+            return (&m_obj == &(other.m_obj)) && (m_member == other.m_member);
         }
 
     private:
@@ -546,32 +561,32 @@ struct InvokableImpl<void> {
 };
 
 
-//==============struct OutType===================
-
-template<typename TCaller>
+/**
+ * @brief Comparing of 2 invokable instances
+ */
+template<typename TInvokable>
 struct IsEqual {
 
-    IsEqual(TCaller const& c):caller(c){}
-    TCaller const& caller;
+    IsEqual(TInvokable const& c):invokable(c){}
+    TInvokable const& invokable;
 
-    bool operator()(typename TCaller::Superclass const* other){
-        TCaller const* t = dynamic_cast<TCaller const*>(other);
-        return t!=NULL ? caller.isEqual(*t) : false;
+    bool operator()(typename TInvokable::Superclass const* other)const{
+        TInvokable const* t = dynamic_cast<TInvokable const*>(other);
+        return t!=NULL ? invokable.isEqual(*t) : false;
     }
 };
 
 
-
-//==============remove impl===================
-
+/**
+ * Removing a slot from the list of slots
+ */
 template<typename Slots, typename TCaller>
 void remove(Slots& slots, TCaller const& caller){
     typedef typename Slots::iterator It;
 
-    IsEqual<TCaller> pred(caller);
+    const IsEqual<TCaller> pred(caller);
 
     Slots toDelete;
-
 
     for(It it = slots.begin(), end = slots.end();it!=end;++it)
         if (pred(*it))
@@ -586,72 +601,68 @@ void remove(Slots& slots, TCaller const& caller){
 
 
 
-
-
-//==============struct Collector===================
-
 template<typename OutType_, typename CallResult>
-void collectReturnValue(OutType_& c, CallResult const& r) {
+void aggregateReturnValue(OutType_& c, CallResult const& r) {
     c.out.push_back(r);
 }
 
 
 template <typename R>
-struct ReturnValueCollector {
+struct ReturnValueAggregator {
 
     typedef R R_;
 
     template <typename A1, typename A2, typename A3, typename A4>
-    static void callAndCollect(OutType<R_>& r, Invokable<R_, A1, A2, A3, A4>* c, A1 a1, A2 a2, A3 a3, A4 a4) {
-        collectReturnValue(r,c->operator()(a1, a2, a3, a4));
+    static void invokeAndAggregate(ReturnValueAggregate<R_>& r, Invokable<R_, A1, A2, A3, A4>* c, A1 a1, A2 a2, A3 a3, A4 a4) {
+        aggregateReturnValue(r,c->operator()(a1, a2, a3, a4));
     }
 
     template <typename A1, typename A2, typename A3>
-    static void callAndCollect(OutType<R_>& r, Invokable<R_, A1, A2, A3>* c, A1 a1, A2 a2, A3 a3) {
-        collectReturnValue(r,c->operator()(a1, a2, a3));
+    static void invokeAndAggregate(ReturnValueAggregate<R_>& r, Invokable<R_, A1, A2, A3>* c, A1 a1, A2 a2, A3 a3) {
+        aggregateReturnValue(r,c->operator()(a1, a2, a3));
     }
 
     template <typename A1, typename A2>
-    static void callAndCollect(OutType<R_>& r, Invokable<R_, A1, A2>* c, A1 a1, A2 a2) {
-        collectReturnValue(r,c->operator()(a1, a2));
+    static void invokeAndAggregate(ReturnValueAggregate<R_>& r, Invokable<R_, A1, A2>* c, A1 a1, A2 a2) {
+        aggregateReturnValue(r,c->operator()(a1, a2));
     }
 
     template <typename A1>
-    static void callAndCollect(OutType<R_>& r, Invokable<R_, A1>* c, A1 a1) {
-        collectReturnValue(r,c->operator()(a1));
+    static void invokeAndAggregate(ReturnValueAggregate<R_>& r, Invokable<R_, A1>* c, A1 a1) {
+        aggregateReturnValue(r,c->operator()(a1));
     }
 
-    static void callAndCollect(OutType<R_>& r, Invokable<R_>* c) {
-        collectReturnValue(r,c->operator()());
+    static void invokeAndAggregate(ReturnValueAggregate<R_>& r, Invokable<R_>* c) {
+        aggregateReturnValue(r,c->operator()());
     }
 };
 
 template <>
-struct ReturnValueCollector<void> {
+struct ReturnValueAggregator<void> {
 
     typedef void R_;
 
     template <typename A1, typename A2, typename A3, typename A4>
-    static void callAndCollect(OutType<R_>&, Invokable<R_, A1, A2, A3, A4>* c, A1 a1, A2 a2, A3 a3, A4 a4) {
+    static void invokeAndAggregate(ReturnValueAggregate<R_>&, Invokable<R_, A1, A2, A3, A4>* c, A1 a1, A2 a2, A3 a3, A4 a4) {
         c->operator()(a1, a2, a3, a4);
     }
 
     template <typename A1, typename A2, typename A3>
-    static void callAndCollect(OutType<R_>&, Invokable<R_, A1, A2, A3>* c, A1 a1, A2 a2, A3 a3) {
+    static void invokeAndAggregate(ReturnValueAggregate<R_>&, Invokable<R_, A1, A2, A3>* c, A1 a1, A2 a2, A3 a3) {
         c->operator()(a1, a2, a3);
     }
 
     template <typename A1, typename A2>
-    static void callAndCollect(OutType<R_>&, Invokable<R_, A1, A2>* c, A1 a1, A2 a2) {
+    static void invokeAndAggregate(ReturnValueAggregate<R_>&, Invokable<R_, A1, A2>* c, A1 a1, A2 a2) {
         c->operator()(a1, a2);
     }
 
     template <typename A1>
-    static void callAndCollect(OutType<R_>&, Invokable<R_, A1>* c, A1 a1) {
+    static void invokeAndAggregate(ReturnValueAggregate<R_>&, Invokable<R_, A1>* c, A1 a1) {
         c->operator()(a1);
     }
 
-    static void callAndCollect(OutType<R_>&, Invokable<R_>* c) {
+    static void invokeAndAggregate(ReturnValueAggregate<R_>&, Invokable<R_>* c) {
         c->operator()();
     }
 };
@@ -659,15 +670,15 @@ struct ReturnValueCollector<void> {
 
 } //namespace detail
 
-//==============struct Signal===================
 
+/**
+ * @brief Main class realizing signal slot behaviour.
+ */
 template <typename TFunc>
 struct Signal;
 
 template <typename R, typename A1, typename A2, typename A3,typename A4>
 struct Signal<R(A1, A2, A3, A4)> {
-
-
 
 
     void connect(R (*member)(A1, A2, A3, A4)) {
@@ -684,17 +695,17 @@ struct Signal<R(A1, A2, A3, A4)> {
 
 
     template <typename TObj>
-    void connect(TObj& obj, R (TObj::*member)(A1, A2, A3, A4) const) {
+    void connect(TObj const& obj, R (TObj::*member)(A1, A2, A3, A4) const) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,detail::Const>::type MCaller_;
+        typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
         slots.push_back(new MCaller_(obj, member));
     }
 
-    detail::OutType<R> emit(A1 a1, A2 a2, A3 a3, A4 a4) {
+    detail::ReturnValueAggregate<R> emit(A1 a1, A2 a2, A3 a3, A4 a4) {
         ScopedLock_ lock(slotsMutex);
-        detail::OutType<R> r;
+        detail::ReturnValueAggregate<R> r;
         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
-            detail::ReturnValueCollector<R>::template callAndCollect<A1, A2, A3, A4>(r, *it, a1, a2, a3, a4);
+            detail::ReturnValueAggregator<R>::template invokeAndAggregate<A1, A2, A3, A4>(r, *it, a1, a2, a3, a4);
         return r;
     }
 
@@ -711,9 +722,9 @@ struct Signal<R(A1, A2, A3, A4)> {
     }
 
     template <typename TObj>
-    void disconnect(TObj& obj, R (TObj::*member)(A1, A2, A3, A4) const) {
+    void disconnect(TObj const& obj, R (TObj::*member)(A1, A2, A3, A4) const) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,detail::Const>::type MCaller_;
+        typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
         detail::remove(slots,MCaller_(obj,member));
     }
 
@@ -763,17 +774,17 @@ struct Signal<R(A1, A2, A3)> {
 
 
     template <typename TObj>
-    void connect(TObj& obj, R (TObj::*member)(A1, A2, A3) const) {
+    void connect(TObj const& obj, R (TObj::*member)(A1, A2, A3) const) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,detail::Const>::type MCaller_;
+        typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
         slots.push_back(new MCaller_(obj, member));
     }
 
-    detail::OutType<R> emit(A1 a1, A2 a2, A3 a3) {
+    detail::ReturnValueAggregate<R> emit(A1 a1, A2 a2, A3 a3) {
         ScopedLock_ lock(slotsMutex);
-        detail::OutType<R> r;
+        detail::ReturnValueAggregate<R> r;
         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
-            detail::ReturnValueCollector<R>::template callAndCollect<A1, A2, A3>(r, *it, a1, a2, a3);
+            detail::ReturnValueAggregator<R>::template invokeAndAggregate<A1, A2, A3>(r, *it, a1, a2, a3);
         return r;
     }
 
@@ -790,9 +801,9 @@ struct Signal<R(A1, A2, A3)> {
     }
 
     template <typename TObj>
-    void disconnect(TObj& obj, R (TObj::*member)(A1, A2, A3) const) {
+    void disconnect(TObj const& obj, R (TObj::*member)(A1, A2, A3) const) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,detail::Const>::type MCaller_;
+        typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
         detail::remove(slots,MCaller_(obj,member));
     }
 
@@ -843,17 +854,17 @@ struct Signal<R(A1, A2)> {
 
 
     template <typename TObj>
-    void connect(TObj& obj, R (TObj::*member)(A1, A2) const) {
+    void connect(TObj const& obj, R (TObj::*member)(A1, A2) const) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,detail::Const>::type MCaller_;
+        typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
         slots.push_back(new MCaller_(obj, member));
     }
 
-    detail::OutType<R> emit(A1 a1, A2 a2) {
+    detail::ReturnValueAggregate<R> emit(A1 a1, A2 a2) {
         ScopedLock_ lock(slotsMutex);
-        detail::OutType<R> r;
+        detail::ReturnValueAggregate<R> r;
         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
-            detail::ReturnValueCollector<R>::template callAndCollect<A1, A2>(r, *it, a1, a2);
+            detail::ReturnValueAggregator<R>::template invokeAndAggregate<A1, A2>(r, *it, a1, a2);
         return r;
     }
 
@@ -870,9 +881,9 @@ struct Signal<R(A1, A2)> {
     }
 
     template <typename TObj>
-    void disconnect(TObj& obj, R (TObj::*member)(A1, A2) const) {
+    void disconnect(TObj const& obj, R (TObj::*member)(A1, A2) const) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,detail::Const>::type MCaller_;
+        typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
         detail::remove(slots,MCaller_(obj,member));
     }
 
@@ -923,17 +934,17 @@ struct Signal<R(A1)> {
 
 
     template <typename TObj>
-    void connect(TObj& obj, R (TObj::*member)(A1) const) {
+    void connect(TObj const& obj, R (TObj::*member)(A1) const) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,detail::Const>::type MCaller_;
+        typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
         slots.push_back(new MCaller_(obj, member));
     }
 
-    detail::OutType<R> emit(A1 a1) {
+    detail::ReturnValueAggregate<R> emit(A1 a1) {
         ScopedLock_ lock(slotsMutex);
-        detail::OutType<R> r;
+        detail::ReturnValueAggregate<R> r;
         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
-            detail::ReturnValueCollector<R>::template callAndCollect<A1>(r, *it, a1);
+            detail::ReturnValueAggregator<R>::template invokeAndAggregate<A1>(r, *it, a1);
         return r;
     }
 
@@ -950,9 +961,9 @@ struct Signal<R(A1)> {
     }
 
     template <typename TObj>
-    void disconnect(TObj& obj, R (TObj::*member)(A1) const) {
+    void disconnect(TObj const& obj, R (TObj::*member)(A1) const) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,detail::Const>::type MCaller_;
+        typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
         detail::remove(slots,MCaller_(obj,member));
     }
 
@@ -1001,19 +1012,18 @@ struct Signal<R()> {
         slots.push_back(new MCaller_(obj, member));
     }
 
-
     template <typename TObj>
-    void connect(TObj& obj, R (TObj::*member)() const) {
+    void connect(TObj const& obj, R (TObj::*member)() const) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,detail::Const>::type MCaller_;
+        typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
         slots.push_back(new MCaller_(obj, member));
     }
 
-    detail::OutType<R> emit() {
+    detail::ReturnValueAggregate<R> emit() {
         ScopedLock_ lock(slotsMutex);
-        detail::OutType<R> r;
+        detail::ReturnValueAggregate<R> r;
         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
-            detail::ReturnValueCollector<R>::callAndCollect(r, *it);
+            detail::ReturnValueAggregator<R>::invokeAndAggregate(r, *it);
         return r;
     }
 
@@ -1030,9 +1040,9 @@ struct Signal<R()> {
     }
 
     template <typename TObj>
-    void disconnect(TObj& obj, R (TObj::*member)() const) {
+    void disconnect(TObj const & obj, R (TObj::*member)() const) {
         ScopedLock_ lock(slotsMutex);
-        typedef typename MCaller<TObj,detail::Const>::type MCaller_;
+        typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
         detail::remove(slots,MCaller_(obj,member));
     }
 
