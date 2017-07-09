@@ -164,19 +164,25 @@ struct InvokableImpl {
 
     template <typename A1, typename A2, typename A3, typename A4>
     struct GlobalFunction<A1, A2, A3, A4> : public Invokable<R_, A1, A2, A3, A4> {
+        typedef GlobalFunction<A1, A2, A3, A4> Classtype;
         typedef Invokable<R_, A1, A2, A3, A4> Superclass;
         typedef R_ (*Member)(A1, A2, A3, A4);
         virtual R_ operator()(A1 a1, A2 a2, A3 a3, A4 a4) { return m_member(a1, a2, a3, a4); }
         GlobalFunction(Member member) : m_member(member) {}
+        bool isEqual(Classtype const& other)const{ return m_member == other.m_member;}
+    private:
         Member m_member;
     };
 
     template <typename A1, typename A2, typename A3>
     struct GlobalFunction<A1, A2, A3> : public Invokable<R_, A1, A2, A3> {
+        typedef GlobalFunction<A1, A2, A3> Classtype;
         typedef Invokable<R_, A1, A2, A3> Superclass;
         typedef R_ (*Member)(A1, A2, A3);
         virtual R_ operator()(A1 a1, A2 a2, A3 a3) { return m_member(a1, a2, a3); }
         GlobalFunction(Member member) : m_member(member) {}
+        bool isEqual(Classtype const& other)const{ return m_member == other.m_member;}
+    private:
         Member m_member;
     };
 
@@ -187,28 +193,32 @@ struct InvokableImpl {
         typedef R_ (*Member)(A1, A2);
         virtual R_ operator()(A1 a1, A2 a2) { return m_member(a1, a2); }
         GlobalFunction(Member member) : m_member(member) {}
-        bool isEqual(Classtype const& other)const{
-            return m_member == other.m_member;
-        }
-
+        bool isEqual(Classtype const& other)const{ return m_member == other.m_member;}
+    private:
         Member m_member;
     };
 
     template <typename A1>
     struct GlobalFunction<A1> : public Invokable<R_, A1> {
+        typedef GlobalFunction<A1> Classtype;
         typedef Invokable<R_, A1> Superclass;
         typedef R_ (*Member)(A1);
         virtual R_ operator()(A1 a1) { return m_member(a1); }
         GlobalFunction(Member member) : m_member(member) {}
+        bool isEqual(Classtype const& other)const{ return m_member == other.m_member;}
+    private:
         Member m_member;
     };
 
     template <bool Dummy>  // must have at least one template parameter to compile!
     struct GlobalFunction<void, void, void, void, void, Dummy> : public Invokable<R_> {
+        typedef GlobalFunction<void, void, void, void, void, Dummy> Classtype;
         typedef Invokable<R_> Superclass;
         typedef R_ (*Member)();
         virtual R_ operator()() { return m_member(); }
         GlobalFunction(Member member) : m_member(member) {}
+        bool isEqual(Classtype const& other)const{ return m_member == other.m_member;}
+    private:
         Member m_member;
     };
 
@@ -222,12 +232,19 @@ struct InvokableImpl {
     template <typename TObj, bool IsConst, typename A1, typename A2, typename A3, typename A4>
     struct MemberFunction<TObj, IsConst, A1, A2, A3, A4> : public Invokable<R_, A1, A2, A3, A4> {
 
+        typedef MemberFunction<TObj, IsConst, A1, A2, A3, A4> Classtype;
         typedef Invokable<R_, A1, A2, A3, A4> Superclass;
+
         typedef typename MemberFunc<TObj, IsConst, R_, A1, A2, A3, A4>::type Member;
 
         virtual R_ operator()(A1 a1, A2 a2, A3 a3, A4 a4) { return (m_obj.*m_member)(a1, a2, a3, a4); }
 
         MemberFunction(TObj& obj, Member member) : m_obj(obj), m_member(member) {}
+
+        bool isEqual(Classtype const& other)const{
+            return (&m_obj == &(other.m_obj)) && (m_member == other.m_member);
+        }
+    private:
 
         TObj& m_obj;
         Member m_member;
@@ -237,12 +254,19 @@ struct InvokableImpl {
     template <typename TObj, bool IsConst, typename A1, typename A2, typename A3>
     struct MemberFunction<TObj, IsConst, A1, A2, A3> : public Invokable<R_, A1, A2, A3> {
 
+        typedef MemberFunction<TObj, IsConst, A1, A2, A3> Classtype;
         typedef Invokable<R_, A1, A2, A3> Superclass;
+
         typedef typename MemberFunc<TObj, IsConst, R_, A1, A2, A3>::type Member;
 
         virtual R_ operator()(A1 a1, A2 a2, A3 a3) { return (m_obj.*m_member)(a1, a2, a3); }
 
         MemberFunction(TObj& obj, Member member) : m_obj(obj), m_member(member) {}
+
+        bool isEqual(Classtype const& other)const{
+            return (&m_obj == &(other.m_obj)) && (m_member == other.m_member);
+        }
+    private:
 
         TObj& m_obj;
         Member m_member;
@@ -261,6 +285,7 @@ struct InvokableImpl {
         bool isEqual(Classtype const& other)const{
             return (&m_obj == &(other.m_obj)) && (m_member == other.m_member);
         }
+    private:
 
         TObj& m_obj;
         Member m_member;
@@ -268,12 +293,19 @@ struct InvokableImpl {
     template <typename TObj, bool IsConst, typename A1>
     struct MemberFunction<TObj, IsConst, A1> : public Invokable<R_, A1> {
 
+        typedef MemberFunction<TObj, IsConst, A1> Classtype;
         typedef Invokable<R_, A1> Superclass;
+
         typedef typename MemberFunc<TObj, IsConst, R_, A1>::type Member;
 
         virtual R_ operator()(A1 a1) { return (m_obj.*m_member)(a1); }
 
         MemberFunction(TObj& obj, Member member) : m_obj(obj), m_member(member) {}
+
+        bool isEqual(Classtype const& other)const{
+            return (&m_obj == &(other.m_obj)) && (m_member == other.m_member);
+        }
+    private:
 
         TObj& m_obj;
         Member m_member;
@@ -281,13 +313,20 @@ struct InvokableImpl {
     template <typename TObj, bool IsConst>
     struct MemberFunction<TObj, IsConst> : public Invokable<R_> {
 
+        typedef MemberFunction<TObj, IsConst> Classtype;
         typedef Invokable<R_> Superclass;
+
         typedef typename MemberFunc<TObj, IsConst, R_>::type Member;
 
         virtual R_ operator()() { return (m_obj.*m_member)(); }
 
         MemberFunction(TObj& obj, Member member) : m_obj(obj), m_member(member) {}
 
+        bool isEqual(Classtype const& other)const{
+            return (&m_obj == &(other.m_obj)) && (m_member == other.m_member);
+        }
+
+    private:
         TObj& m_obj;
         Member m_member;
     };
@@ -304,38 +343,53 @@ struct InvokableImpl<void> {
     template <typename A1, typename A2, typename A3, typename A4>
     struct GlobalFunction<A1, A2, A3, A4> : public Invokable<R_, A1, A2, A3, A4> {
 
+        typedef GlobalFunction<A1, A2, A3, A4> Classtype;
         typedef Invokable<R_, A1, A2, A3, A4> Superclass;
+
         typedef R_ (*Member)(A1, A2, A3, A4);
 
         virtual R_ operator()(A1 a1, A2 a2, A3 a3, A4 a4) { m_member(a1, a2, a3, a4); }
 
+        bool isEqual(Classtype const& other)const{ return m_member == other.m_member;}
+
         GlobalFunction(Member member) : m_member(member) {}
 
+    private:
         Member m_member;
     };
 
     template <typename A1, typename A2, typename A3>
     struct GlobalFunction<A1, A2, A3> : public Invokable<R_, A1, A2, A3> {
 
+        typedef GlobalFunction<A1, A2, A3> Classtype;
         typedef Invokable<R_, A1, A2, A3> Superclass;
+
         typedef R_ (*Member)(A1, A2, A3);
 
         virtual R_ operator()(A1 a1, A2 a2, A3 a3) { m_member(a1, a2, a3); }
 
         GlobalFunction(Member member) : m_member(member) {}
 
+        bool isEqual(Classtype const& other)const{ return m_member == other.m_member;}
+
+    private:
         Member m_member;
     };
     template <typename A1, typename A2>
     struct GlobalFunction<A1, A2> : public Invokable<R_, A1, A2> {
 
+        typedef GlobalFunction<A1, A2> Classtype;
         typedef Invokable<R_, A1, A2> Superclass;
+
         typedef R_ (*Member)(A1, A2);
 
         virtual R_ operator()(A1 a1, A2 a2) { m_member(a1, a2); }
 
         GlobalFunction(Member member) : m_member(member) {}
 
+        bool isEqual(Classtype const& other)const{ return m_member == other.m_member;}
+
+    private:
         Member m_member;
 
     };
@@ -343,62 +397,94 @@ struct InvokableImpl<void> {
     template <typename A1>
     struct GlobalFunction<A1> : public Invokable<R_, A1> {
 
+        typedef GlobalFunction<A1> Classtype;
         typedef Invokable<R_, A1> Superclass;
+
         typedef R_ (*Member)(A1);
 
         virtual R_ operator()(A1 a1) { m_member(a1); }
 
         GlobalFunction(Member member) : m_member(member) {}
 
+        bool isEqual(Classtype const& other)const{ return m_member == other.m_member;}
+
+    private:
         Member m_member;
     };
 
     template <bool Dummy>  // must have at least one template parameter to compile!
     struct GlobalFunction<void, void, void, void, void, Dummy> : public Invokable<R_> {
 
+        typedef GlobalFunction<void, void, void, void, void, Dummy> Classtype;
         typedef Invokable<R_> Superclass;
+
         typedef R_ (*Member)();
 
         virtual R_ operator()() { m_member(); }
 
         GlobalFunction(Member member) : m_member(member) {}
 
+        bool isEqual(Classtype const& other)const{ return m_member == other.m_member;}
+
+    private:
         Member m_member;
     };
+
+
     //////////////////////////////////////////////////////////
+
+
     template <typename TObj, bool IsConst, typename A1 = void, typename A2 = void, typename A3 = void, typename A4 = void, typename A5 = void>
     struct MemberFunction;
 
     template <typename TObj, bool IsConst, typename A1, typename A2, typename A3, typename A4>
     struct MemberFunction<TObj, IsConst, A1, A2, A3, A4> : public Invokable<R_, A1, A2, A3, A4> {
 
+        typedef MemberFunction<TObj, IsConst, A1, A2, A3, A4> Classtype;
         typedef Invokable<R_, A1, A2, A3, A4> Superclass;
+
         typedef typename MemberFunc<TObj, IsConst, R_, A1, A2, A3, A4>::type Member;
 
         virtual R_ operator()(A1 a1, A2 a2, A3 a3, A4 a4) { (m_obj.*m_member)(a1, a2, a3, a4); }
 
         MemberFunction(TObj& obj, Member member) : m_obj(obj), m_member(member) {}
 
+        bool isEqual(Classtype const& other)const{
+            return (&m_obj == &(other.m_obj)) && (m_member == other.m_member);
+        }
+
+    private:
         TObj& m_obj;
         Member m_member;
     };
+
     template <typename TObj, bool IsConst, typename A1, typename A2, typename A3>
     struct MemberFunction<TObj, IsConst, A1, A2, A3> : public Invokable<R_, A1, A2, A3> {
 
+        typedef MemberFunction<TObj, IsConst, A1, A2, A3> Classtype;
         typedef Invokable<R_, A1, A2, A3> Superclass;
+
         typedef typename MemberFunc<TObj, IsConst, R_, A1, A2, A3>::type Member;
 
         virtual R_ operator()(A1 a1, A2 a2, A3 a3) { (m_obj.*m_member)(a1, a2, a3); }
 
         MemberFunction(TObj& obj, Member member) : m_obj(obj), m_member(member) {}
 
+        bool isEqual(Classtype const& other)const{
+            return (&m_obj == &(other.m_obj)) && (m_member == other.m_member);
+        }
+
+    private:
         TObj& m_obj;
         Member m_member;
     };
+
     template <typename TObj, bool IsConst, typename A1, typename A2>
     struct MemberFunction<TObj, IsConst, A1, A2> : public Invokable<R_, A1, A2> {
+
         typedef MemberFunction<TObj, IsConst, A1, A2> Classtype;
         typedef Invokable<R_, A1, A2> Superclass;
+
         typedef typename MemberFunc<TObj, IsConst, R_, A1, A2>::type Member;
 
         virtual R_ operator()(A1 a1, A2 a2) { (m_obj.*m_member)(a1, a2); }
@@ -409,32 +495,49 @@ struct InvokableImpl<void> {
             return (m_obj == other.m_obj) && (m_member == other.m_member);
         }
 
+    private:
         TObj& m_obj;
         Member m_member;
     };
+
     template <typename TObj, bool IsConst, typename A1>
     struct MemberFunction<TObj, IsConst, A1> : public Invokable<R_, A1> {
 
+        typedef MemberFunction<TObj, IsConst, A1> Classtype;
         typedef Invokable<R_, A1> Superclass;
+
         typedef typename MemberFunc<TObj, IsConst, R_, A1>::type Member;
 
         virtual R_ operator()(A1 a1) { (m_obj.*m_member)(a1); }
 
         MemberFunction(TObj& obj, Member member) : m_obj(obj), m_member(member) {}
 
+        bool isEqual(Classtype const& other)const{
+            return (&m_obj == &(other.m_obj)) && (m_member == other.m_member);
+        }
+
+    private:
         TObj& m_obj;
         Member m_member;
     };
+
     template <typename TObj, bool IsConst>
     struct MemberFunction<TObj, IsConst> : public Invokable<R_> {
 
+        typedef MemberFunction<TObj, IsConst> Classtype;
         typedef Invokable<R_> Superclass;
+
         typedef typename MemberFunc<TObj, IsConst, R_>::type Member;
 
         virtual R_ operator()() { (m_obj.*m_member)(); }
 
         MemberFunction(TObj& obj, Member member) : m_obj(obj), m_member(member) {}
 
+        bool isEqual(Classtype const& other)const{
+            return (&m_obj == &(other.m_obj)) && (m_member == other.m_member);
+        }
+
+    private:
         TObj& m_obj;
         Member m_member;
     };
@@ -541,87 +644,170 @@ struct ReturnValueCollector<void> {
 
 //==============struct Signal===================
 
-template <typename R = void, typename A1 = void, typename A2 = void, typename A3 = void, typename A4 = void, typename A5 = void>
+template <typename TFunc>
 struct Signal;
 
-template <typename R, typename A1, typename A2, typename A3, typename A4>
-struct Signal<R, A1, A2, A3, A4> {
+template <typename R, typename A1, typename A2, typename A3,typename A4>
+struct Signal<R(A1, A2, A3, A4)> {
+
 
     void connect(R (*member)(A1, A2, A3, A4)) {
-        typedef typename InvokableImpl<R>::template GlobalFunction<A1, A2, A3, A4> Caller;
-        slots.push_back(new Caller(member));
+        ScopedLock_ lock(slotsMutex);
+        slots.push_back(new GCaller(member));
     }
 
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1, A2, A3, A4)) {
-        typedef typename InvokableImpl<R>::template MemberFunction<TObj, NotConst, A1, A2, A3, A4> Caller;
-        slots.push_back(new Caller(obj, member));
+        ScopedLock_ lock(slotsMutex);
+        typedef typename MCaller<TObj,NotConst>::type MCaller_;
+        slots.push_back(new MCaller_(obj, member));
     }
+
 
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1, A2, A3, A4) const) {
-        typedef typename InvokableImpl<R>::template MemberFunction<TObj, Const, A1, A2, A3, A4> Caller;
-        slots.push_back(new Caller(obj, member));
+        ScopedLock_ lock(slotsMutex);
+        typedef typename MCaller<TObj,Const>::type MCaller_;
+        slots.push_back(new MCaller_(obj, member));
     }
 
     OutType<R> emit(A1 a1, A2 a2, A3 a3, A4 a4) {
+        ScopedLock_ lock(slotsMutex);
         OutType<R> r;
         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
             ReturnValueCollector<R>::template callAndCollect<A1, A2, A3, A4>(r, *it, a1, a2, a3, a4);
         return r;
     }
 
+    void disconnect(R (*member)(A1, A2, A3, A4)) {
+        ScopedLock_ lock(slotsMutex);
+        remove(slots,GCaller(member));
+    }
+
+    template <typename TObj>
+    void disconnect(TObj& obj, R (TObj::*member)(A1, A2, A3, A4)) {
+        ScopedLock_ lock(slotsMutex);
+        typedef typename MCaller<TObj,NotConst>::type MCaller_;
+        remove(slots,MCaller_(obj,member));
+    }
+
+    template <typename TObj>
+    void disconnect(TObj& obj, R (TObj::*member)(A1, A2, A3, A4) const) {
+        ScopedLock_ lock(slotsMutex);
+        typedef typename MCaller<TObj,Const>::type MCaller_;
+        remove(slots,MCaller_(obj,member));
+    }
+
+    void disconnectAll(){
+        ScopedLock_ lock(slotsMutex);
+         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
+             delete *it;
+         slots.clear();
+    }
+
+    ~Signal(){ disconnectAll(); }
+
    private:
+
+    typedef typename InvokableImpl<R>::template GlobalFunction<A1, A2, A3, A4> GCaller;
+
+    template <typename TObj, bool IsConst>
+    struct MCaller{ typedef typename InvokableImpl<R>::template MemberFunction<TObj, IsConst, A1, A2, A3, A4> type; };
 
     typedef Invokable<R, A1, A2, A3, A4> Slot;
     typedef typename SlotContainer<Slot*>::type Slots;
     typedef typename Slots::iterator SlotsIt;
     typedef typename Slots::const_iterator SlotsCIt;
 
+    typedef Mutex::type Mutex_;
+    typedef ScopedLock::type ScopedLock_;
+
     Slots slots;
+    Mutex_ slotsMutex;
 };
 
 template <typename R, typename A1, typename A2, typename A3>
-struct Signal<R, A1, A2, A3> {
+struct Signal<R(A1, A2, A3)> {
+
 
     void connect(R (*member)(A1, A2, A3)) {
-        typedef typename InvokableImpl<R>::template GlobalFunction<A1, A2, A3> Caller;
-        slots.push_back(new Caller(member));
+        ScopedLock_ lock(slotsMutex);
+        slots.push_back(new GCaller(member));
     }
 
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1, A2, A3)) {
-        typedef typename InvokableImpl<R>::template MemberFunction<TObj, NotConst, A1, A2, A3> Caller;
-        slots.push_back(new Caller(obj, member));
+        ScopedLock_ lock(slotsMutex);
+        typedef typename MCaller<TObj,NotConst>::type MCaller_;
+        slots.push_back(new MCaller_(obj, member));
     }
+
 
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1, A2, A3) const) {
-        typedef typename InvokableImpl<R>::template MemberFunction<TObj, Const, A1, A2, A3> Caller;
-        slots.push_back(new Caller(obj, member));
+        ScopedLock_ lock(slotsMutex);
+        typedef typename MCaller<TObj,Const>::type MCaller_;
+        slots.push_back(new MCaller_(obj, member));
     }
 
     OutType<R> emit(A1 a1, A2 a2, A3 a3) {
+        ScopedLock_ lock(slotsMutex);
         OutType<R> r;
         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
             ReturnValueCollector<R>::template callAndCollect<A1, A2, A3>(r, *it, a1, a2, a3);
         return r;
     }
 
+    void disconnect(R (*member)(A1, A2, A3)) {
+        ScopedLock_ lock(slotsMutex);
+        remove(slots,GCaller(member));
+    }
+
+    template <typename TObj>
+    void disconnect(TObj& obj, R (TObj::*member)(A1, A2, A3)) {
+        ScopedLock_ lock(slotsMutex);
+        typedef typename MCaller<TObj,NotConst>::type MCaller_;
+        remove(slots,MCaller_(obj,member));
+    }
+
+    template <typename TObj>
+    void disconnect(TObj& obj, R (TObj::*member)(A1, A2, A3) const) {
+        ScopedLock_ lock(slotsMutex);
+        typedef typename MCaller<TObj,Const>::type MCaller_;
+        remove(slots,MCaller_(obj,member));
+    }
+
+    void disconnectAll(){
+        ScopedLock_ lock(slotsMutex);
+         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
+             delete *it;
+         slots.clear();
+    }
+
+    ~Signal(){ disconnectAll(); }
+
    private:
+
+    typedef typename InvokableImpl<R>::template GlobalFunction<A1, A2, A3> GCaller;
+
+    template <typename TObj, bool IsConst>
+    struct MCaller{ typedef typename InvokableImpl<R>::template MemberFunction<TObj, IsConst, A1, A2, A3> type; };
 
     typedef Invokable<R, A1, A2, A3> Slot;
     typedef typename SlotContainer<Slot*>::type Slots;
     typedef typename Slots::iterator SlotsIt;
     typedef typename Slots::const_iterator SlotsCIt;
 
+    typedef Mutex::type Mutex_;
+    typedef ScopedLock::type ScopedLock_;
+
     Slots slots;
+    Mutex_ slotsMutex;
 };
 
 
-
 template <typename R, typename A1, typename A2>
-struct Signal<R, A1, A2> {
+struct Signal<R(A1, A2)> {
 
 
     void connect(R (*member)(A1, A2)) {
@@ -699,80 +885,168 @@ struct Signal<R, A1, A2> {
     Mutex_ slotsMutex;
 };
 
+
 template <typename R, typename A1>
-struct Signal<R, A1> {
+struct Signal<R(A1)> {
+
 
     void connect(R (*member)(A1)) {
-        typedef typename InvokableImpl<R>::template GlobalFunction<A1> Caller;
-        slots.push_back(new Caller(member));
+        ScopedLock_ lock(slotsMutex);
+        slots.push_back(new GCaller(member));
     }
 
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1)) {
-        typedef typename InvokableImpl<R>::template MemberFunction<TObj, NotConst, A1> Caller;
-        slots.push_back(new Caller(obj, member));
+        ScopedLock_ lock(slotsMutex);
+        typedef typename MCaller<TObj,NotConst>::type MCaller_;
+        slots.push_back(new MCaller_(obj, member));
     }
+
 
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1) const) {
-        typedef typename InvokableImpl<R>::template MemberFunction<TObj, Const, A1> Caller;
-        slots.push_back(new Caller(obj, member));
+        ScopedLock_ lock(slotsMutex);
+        typedef typename MCaller<TObj,Const>::type MCaller_;
+        slots.push_back(new MCaller_(obj, member));
     }
 
     OutType<R> emit(A1 a1) {
+        ScopedLock_ lock(slotsMutex);
         OutType<R> r;
         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
             ReturnValueCollector<R>::template callAndCollect<A1>(r, *it, a1);
         return r;
     }
 
+    void disconnect(R (*member)(A1)) {
+        ScopedLock_ lock(slotsMutex);
+        remove(slots,GCaller(member));
+    }
+
+    template <typename TObj>
+    void disconnect(TObj& obj, R (TObj::*member)(A1)) {
+        ScopedLock_ lock(slotsMutex);
+        typedef typename MCaller<TObj,NotConst>::type MCaller_;
+        remove(slots,MCaller_(obj,member));
+    }
+
+    template <typename TObj>
+    void disconnect(TObj& obj, R (TObj::*member)(A1) const) {
+        ScopedLock_ lock(slotsMutex);
+        typedef typename MCaller<TObj,Const>::type MCaller_;
+        remove(slots,MCaller_(obj,member));
+    }
+
+    void disconnectAll(){
+        ScopedLock_ lock(slotsMutex);
+         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
+             delete *it;
+         slots.clear();
+    }
+
+    ~Signal(){ disconnectAll(); }
+
    private:
+
+    typedef typename InvokableImpl<R>::template GlobalFunction<A1> GCaller;
+
+    template <typename TObj, bool IsConst>
+    struct MCaller{ typedef typename InvokableImpl<R>::template MemberFunction<TObj, IsConst, A1> type; };
 
     typedef Invokable<R, A1> Slot;
     typedef typename SlotContainer<Slot*>::type Slots;
     typedef typename Slots::iterator SlotsIt;
     typedef typename Slots::const_iterator SlotsCIt;
 
+    typedef Mutex::type Mutex_;
+    typedef ScopedLock::type ScopedLock_;
+
     Slots slots;
+    Mutex_ slotsMutex;
 };
 
+
 template <typename R>
-struct Signal<R> {
+struct Signal<R()> {
+
 
     void connect(R (*member)()) {
-        static const bool dummy = false;
-        typedef typename InvokableImpl<R>::template GlobalFunction<void, void, void, void, void, dummy> Caller;  // special calse
-        slots.push_back(new Caller(member));
+        ScopedLock_ lock(slotsMutex);
+        slots.push_back(new GCaller(member));
     }
 
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)()) {
-        typedef typename InvokableImpl<R>::template MemberFunction<TObj, NotConst> Caller;
-        slots.push_back(new Caller(obj, member));
+        ScopedLock_ lock(slotsMutex);
+        typedef typename MCaller<TObj,NotConst>::type MCaller_;
+        slots.push_back(new MCaller_(obj, member));
     }
+
 
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)() const) {
-        typedef typename InvokableImpl<R>::template MemberFunction<TObj, Const> Caller;
-        slots.push_back(new Caller(obj, member));
+        ScopedLock_ lock(slotsMutex);
+        typedef typename MCaller<TObj,Const>::type MCaller_;
+        slots.push_back(new MCaller_(obj, member));
     }
 
     OutType<R> emit() {
+        ScopedLock_ lock(slotsMutex);
         OutType<R> r;
         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
-            ReturnValueCollector<R>::callAndCollect(r, *it);  // special calse
+            ReturnValueCollector<R>::callAndCollect(r, *it);
         return r;
     }
 
+    void disconnect(R (*member)()) {
+        ScopedLock_ lock(slotsMutex);
+        remove(slots,GCaller(member));
+    }
+
+    template <typename TObj>
+    void disconnect(TObj& obj, R (TObj::*member)()) {
+        ScopedLock_ lock(slotsMutex);
+        typedef typename MCaller<TObj,NotConst>::type MCaller_;
+        remove(slots,MCaller_(obj,member));
+    }
+
+    template <typename TObj>
+    void disconnect(TObj& obj, R (TObj::*member)() const) {
+        ScopedLock_ lock(slotsMutex);
+        typedef typename MCaller<TObj,Const>::type MCaller_;
+        remove(slots,MCaller_(obj,member));
+    }
+
+    void disconnectAll(){
+        ScopedLock_ lock(slotsMutex);
+         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
+             delete *it;
+         slots.clear();
+    }
+
+    ~Signal(){ disconnectAll(); }
+
    private:
+
+    static const bool dummy = false;
+    typedef typename InvokableImpl<R>::template GlobalFunction<void, void, void, void, void, dummy> GCaller;
+
+    template <typename TObj, bool IsConst>
+    struct MCaller{ typedef typename InvokableImpl<R>::template MemberFunction<TObj, IsConst > type; };
 
     typedef Invokable<R> Slot;
     typedef typename SlotContainer<Slot*>::type Slots;
     typedef typename Slots::iterator SlotsIt;
     typedef typename Slots::const_iterator SlotsCIt;
 
+    typedef Mutex::type Mutex_;
+    typedef ScopedLock::type ScopedLock_;
+
     Slots slots;
+    Mutex_ slotsMutex;
 };
+
+
 
 
 

@@ -170,7 +170,7 @@ TestMain::TestMain() {
     // const args, ref args, volatile args, const ptr
 
     {
-        Signal<R, A1, A2, A3, A4> c;
+        Signal<R(A1, A2, A3, A4)> c;
 
         Obj obj;
 
@@ -184,7 +184,7 @@ TestMain::TestMain() {
     }
 
     {
-        Signal<R, A1, A2, A3> c;
+        Signal<R( A1, A2, A3)> c;
 
         Obj obj;
 
@@ -198,7 +198,7 @@ TestMain::TestMain() {
     }
 
     {
-        Signal<R, A1, A2> c;
+        Signal<R( A1, A2)> c;
 
         Obj obj;
 
@@ -212,7 +212,7 @@ TestMain::TestMain() {
     }
 
     {
-        Signal<R, A1> c;
+        Signal<R( A1)> c;
 
         Obj obj;
 
@@ -226,7 +226,7 @@ TestMain::TestMain() {
     }
 
     {
-        Signal<R> c;
+        Signal<R()> c;
 
         Obj obj;
 
@@ -242,7 +242,7 @@ TestMain::TestMain() {
     /////////////////////////
 
     {
-        Signal<void, A1, A2, A3, A4> c;
+        Signal<void( A1, A2, A3, A4)> c;
 
         Obj obj;
 
@@ -256,7 +256,7 @@ TestMain::TestMain() {
     }
 
     {
-        Signal<void, A1, A2, A3> c;
+        Signal<void( A1, A2, A3)> c;
 
         Obj obj;
 
@@ -270,7 +270,7 @@ TestMain::TestMain() {
     }
 
     {
-        Signal<void, A1, A2> c;
+        Signal<void( A1, A2)> c;
 
         Obj obj;
 
@@ -284,7 +284,7 @@ TestMain::TestMain() {
     }
 
     {
-        Signal<void, A1> c;
+        Signal<void( A1)> c;
 
         Obj obj;
 
@@ -298,7 +298,7 @@ TestMain::TestMain() {
     }
 
     {
-        Signal<void> c;
+        Signal<void()> c;
 
         Obj obj;
 
@@ -314,7 +314,7 @@ TestMain::TestMain() {
     /////////////////////////
 
     {
-        Signal<R, const A1, A2> c;
+        Signal<R( const A1, A2)> c;
 
         Obj obj;
 
@@ -328,7 +328,7 @@ TestMain::TestMain() {
     }
 
     {
-        Signal<R, const A1&, A2> c;
+        Signal<R( const A1&, A2)> c;
 
         Obj obj;
 
@@ -342,7 +342,7 @@ TestMain::TestMain() {
     }
 
     {
-        Signal<void> c;
+        Signal<void()> c;
 
         c.connect(&Obj::smember0);
 
@@ -351,7 +351,7 @@ TestMain::TestMain() {
 
 
     {
-        Signal<R, const A1&, A2> c;
+        Signal<R( const A1&, A2)> c;
 
         Obj obj;
         c.connect(obj, &Obj::nvoid_member2);
