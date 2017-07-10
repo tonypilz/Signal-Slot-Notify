@@ -724,24 +724,24 @@ void testDeleteOnRemove(){
     const DObj dobj_1(1);
     const DObj dobj_2(2);
 
-    detail::remove(v, dobj_1);
+    detail::disconnect(v, dobj_1);
 
     assert(DObj::deletecount==1);
     assert((int)(v.size())==1);
     assert(v.front()->id==2);
 
-    detail::remove(v, dobj_1);
+    detail::disconnect(v, dobj_1);
 
     assert(DObj::deletecount==1);
     assert((int)(v.size())==1);
     assert(v.front()->id==2);
 
-    detail::remove(v, dobj_2);
+    detail::disconnect(v, dobj_2);
 
     assert(DObj::deletecount==2);
     assert((int)(v.size())==0);
 
-    detail::remove(v, dobj_2);
+    detail::disconnect(v, dobj_2);
 
     assert(DObj::deletecount==2);
     assert((int)(v.size())==0);
@@ -1240,19 +1240,21 @@ void testSignal_correct_call_seq_nvoid(){
 
 }
 
-void incrementReference(int& ref){ ++ref;}
+void incrementReference(int& intRef, std::string& sref){ ++intRef; sref.append("s");}
 
 void testSignal_refrences_return(){
 
     {
-        Signal<void(int&)> c;
+        Signal<void(int&,std::string& s)> c;
         c.connect(&incrementReference);
         c.connect(&incrementReference);
         c.connect(&incrementReference);
 
         int n = 7;
-        c.emit(n);
+        std::string x("x");
+        c.emit(n,x);
         assert(n==10);
+        assert(x=="xsss");
     }
 }
 void testSignal(){

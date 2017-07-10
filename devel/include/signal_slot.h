@@ -668,7 +668,7 @@ struct IsEqual {
  * Removing a slot from the list of slots
  */
 template<typename Slots, typename TCaller>
-void remove(Slots& slots, TCaller const& caller){
+void disconnect(Slots& slots, TCaller const& caller){
     typedef typename Slots::iterator It;
 
     const IsEqual<TCaller> pred(caller);
@@ -686,6 +686,13 @@ void remove(Slots& slots, TCaller const& caller){
         delete *it;
 }
 
+template<typename Slots>
+void disconnectAll(Slots& slots){
+    typedef typename Slots::const_iterator SlotsCIt;
+    for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
+        delete *it;
+    slots.clear();
+}
 
 
 template<typename OutType_, typename CallResult>
@@ -694,7 +701,7 @@ void aggregateReturnValue(OutType_& c, CallResult const& r) {
 }
 
 template <typename R>
-struct ReturnValueAggregatox {
+struct ReturnValueAggregator {
 
     typedef R R_;
 
@@ -709,7 +716,7 @@ struct ReturnValueAggregatox {
 };
 
 template <>
-struct ReturnValueAggregatox<void> {
+struct ReturnValueAggregator<void> {
 
     typedef void R_;
 
@@ -723,6 +730,11 @@ struct ReturnValueAggregatox<void> {
     }
 };
 
+
+template<typename Slots, typename Invokable>
+void connect(Slots& slots, Invokable* invokable){
+    slots.push_back(invokable);
+}
 
 } //namespace detail
 
@@ -739,14 +751,14 @@ struct Signal<R(A1, A2, A3, A4)> {
 
     void connect(R (*member)(A1, A2, A3, A4)) {
         ScopedLock_ lock(slotsMutex);
-        slots.push_back(new GCaller(member));
+        detail::connect(slots,new GCaller(member));
     }
 
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1, A2, A3, A4)) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
-        slots.push_back(new MCaller_(obj, member));
+        detail::connect(slots,new MCaller_(obj, member));
     }
 
 
@@ -754,41 +766,39 @@ struct Signal<R(A1, A2, A3, A4)> {
     void connect(TObj const& obj, R (TObj::*member)(A1, A2, A3, A4) const) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
-        slots.push_back(new MCaller_(obj, member));
+        detail::connect(slots,new MCaller_(obj, member));
     }
 
     detail::ReturnValueAggregate<R> emit(A1 a1, A2 a2, A3 a3, A4 a4) {
         ScopedLock_ lock(slotsMutex);
         Args args(a1,a2,a3,a4);
         detail::ReturnValueAggregate<R> r;
-        detail::ReturnValueAggregatox<R>::template invokeAndAggregate<Slots,Args>(r, slots, args);
+        detail::ReturnValueAggregator<R>::invokeAndAggregate(r, slots, args);
         return r;
     }
 
     void disconnect(R (*member)(A1, A2, A3, A4)) {
         ScopedLock_ lock(slotsMutex);
-        detail::remove(slots,GCaller(member));
+        detail::disconnect(slots,GCaller(member));
     }
 
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)(A1, A2, A3, A4)) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
-        detail::remove(slots,MCaller_(obj,member));
+        detail::disconnect(slots,MCaller_(obj,member));
     }
 
     template <typename TObj>
     void disconnect(TObj const& obj, R (TObj::*member)(A1, A2, A3, A4) const) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
-        detail::remove(slots,MCaller_(obj,member));
+        detail::disconnect(slots,MCaller_(obj,member));
     }
 
     void disconnectAll(){
         ScopedLock_ lock(slotsMutex);
-         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
-             delete *it;
-         slots.clear();
+        detail::disconnectAll(slots);
     }
 
     ~Signal(){ disconnectAll(); }
@@ -803,8 +813,6 @@ struct Signal<R(A1, A2, A3, A4)> {
 
     typedef detail::Invokable<R, A1, A2, A3, A4> Slot;
     typedef typename detail::SlotContainer<Slot*>::type Slots;
-    typedef typename Slots::iterator SlotsIt;
-    typedef typename Slots::const_iterator SlotsCIt;
 
     typedef detail::Mutex::type Mutex_;
     typedef detail::ScopedLock::type ScopedLock_;
@@ -819,14 +827,14 @@ struct Signal<R(A1, A2, A3)> {
 
     void connect(R (*member)(A1, A2, A3)) {
         ScopedLock_ lock(slotsMutex);
-        slots.push_back(new GCaller(member));
+        detail::connect(slots,new GCaller(member));
     }
 
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1, A2, A3)) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
-        slots.push_back(new MCaller_(obj, member));
+        detail::connect(slots,new MCaller_(obj, member));
     }
 
 
@@ -834,41 +842,39 @@ struct Signal<R(A1, A2, A3)> {
     void connect(TObj const& obj, R (TObj::*member)(A1, A2, A3) const) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
-        slots.push_back(new MCaller_(obj, member));
+        detail::connect(slots,new MCaller_(obj, member));
     }
 
     detail::ReturnValueAggregate<R> emit(A1 a1, A2 a2, A3 a3) {
         ScopedLock_ lock(slotsMutex);
         Args args(a1,a2,a3);
         detail::ReturnValueAggregate<R> r;
-        detail::ReturnValueAggregatox<R>::template invokeAndAggregate<Slots,Args>(r, slots, args);
+        detail::ReturnValueAggregator<R>::invokeAndAggregate(r, slots, args);
         return r;
     }
 
     void disconnect(R (*member)(A1, A2, A3)) {
         ScopedLock_ lock(slotsMutex);
-        detail::remove(slots,GCaller(member));
+        detail::disconnect(slots,GCaller(member));
     }
 
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)(A1, A2, A3)) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
-        detail::remove(slots,MCaller_(obj,member));
+        detail::disconnect(slots,MCaller_(obj,member));
     }
 
     template <typename TObj>
     void disconnect(TObj const& obj, R (TObj::*member)(A1, A2, A3) const) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
-        detail::remove(slots,MCaller_(obj,member));
+        detail::disconnect(slots,MCaller_(obj,member));
     }
 
     void disconnectAll(){
         ScopedLock_ lock(slotsMutex);
-         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
-             delete *it;
-         slots.clear();
+        detail::disconnectAll(slots);
     }
 
     ~Signal(){ disconnectAll(); }
@@ -883,8 +889,6 @@ struct Signal<R(A1, A2, A3)> {
 
     typedef detail::Invokable<R, A1, A2, A3> Slot;
     typedef typename detail::SlotContainer<Slot*>::type Slots;
-    typedef typename Slots::iterator SlotsIt;
-    typedef typename Slots::const_iterator SlotsCIt;
 
     typedef detail::Mutex::type Mutex_;
     typedef detail::ScopedLock::type ScopedLock_;
@@ -900,14 +904,14 @@ struct Signal<R(A1, A2)> {
 
     void connect(R (*member)(A1, A2)) {
         ScopedLock_ lock(slotsMutex);
-        slots.push_back(new GCaller(member));
+        detail::connect(slots,new GCaller(member));
     }
 
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1, A2)) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
-        slots.push_back(new MCaller_(obj, member));
+        detail::connect(slots,new MCaller_(obj, member));
     }
 
 
@@ -915,41 +919,39 @@ struct Signal<R(A1, A2)> {
     void connect(TObj const& obj, R (TObj::*member)(A1, A2) const) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
-        slots.push_back(new MCaller_(obj, member));
+        detail::connect(slots,new MCaller_(obj, member));
     }
 
     detail::ReturnValueAggregate<R> emit(A1 a1, A2 a2) {
         ScopedLock_ lock(slotsMutex);
         Args args(a1,a2);
         detail::ReturnValueAggregate<R> r;
-        detail::ReturnValueAggregatox<R>::template invokeAndAggregate<Slots,Args>(r, slots, args);
+        detail::ReturnValueAggregator<R>::invokeAndAggregate(r, slots, args);
         return r;
     }
 
     void disconnect(R (*member)(A1, A2)) {
         ScopedLock_ lock(slotsMutex);
-        detail::remove(slots,GCaller(member));
+        detail::disconnect(slots,GCaller(member));
     }
 
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)(A1, A2)) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
-        detail::remove(slots,MCaller_(obj,member));
+        detail::disconnect(slots,MCaller_(obj,member));
     }
 
     template <typename TObj>
     void disconnect(TObj const& obj, R (TObj::*member)(A1, A2) const) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
-        detail::remove(slots,MCaller_(obj,member));
+        detail::disconnect(slots,MCaller_(obj,member));
     }
 
     void disconnectAll(){
         ScopedLock_ lock(slotsMutex);
-         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
-             delete *it;
-         slots.clear();
+        detail::disconnectAll(slots);
     }
 
     ~Signal(){ disconnectAll(); }
@@ -964,8 +966,6 @@ struct Signal<R(A1, A2)> {
 
     typedef detail::Invokable<R, A1, A2> Slot;
     typedef typename detail::SlotContainer<Slot*>::type Slots;
-    typedef typename Slots::iterator SlotsIt;
-    typedef typename Slots::const_iterator SlotsCIt;
 
     typedef detail::Mutex::type Mutex_;
     typedef detail::ScopedLock::type ScopedLock_;
@@ -981,14 +981,14 @@ struct Signal<R(A1)> {
 
     void connect(R (*member)(A1)) {
         ScopedLock_ lock(slotsMutex);
-        slots.push_back(new GCaller(member));
+        detail::connect(slots,new GCaller(member));
     }
 
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1)) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
-        slots.push_back(new MCaller_(obj, member));
+        detail::connect(slots,new MCaller_(obj, member));
     }
 
 
@@ -996,41 +996,39 @@ struct Signal<R(A1)> {
     void connect(TObj const& obj, R (TObj::*member)(A1) const) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
-        slots.push_back(new MCaller_(obj, member));
+        detail::connect(slots,new MCaller_(obj, member));
     }
 
     detail::ReturnValueAggregate<R> emit(A1 a1) {
         ScopedLock_ lock(slotsMutex);
         Args args(a1);
         detail::ReturnValueAggregate<R> r;
-        detail::ReturnValueAggregatox<R>::template invokeAndAggregate<Slots,Args>(r, slots, args);
+        detail::ReturnValueAggregator<R>::invokeAndAggregate(r, slots, args);
         return r;
     }
 
     void disconnect(R (*member)(A1)) {
         ScopedLock_ lock(slotsMutex);
-        detail::remove(slots,GCaller(member));
+        detail::disconnect(slots,GCaller(member));
     }
 
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)(A1)) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
-        detail::remove(slots,MCaller_(obj,member));
+        detail::disconnect(slots,MCaller_(obj,member));
     }
 
     template <typename TObj>
     void disconnect(TObj const& obj, R (TObj::*member)(A1) const) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
-        detail::remove(slots,MCaller_(obj,member));
+        detail::disconnect(slots,MCaller_(obj,member));
     }
 
     void disconnectAll(){
         ScopedLock_ lock(slotsMutex);
-         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
-             delete *it;
-         slots.clear();
+        detail::disconnectAll(slots);
     }
 
     ~Signal(){ disconnectAll(); }
@@ -1045,8 +1043,6 @@ struct Signal<R(A1)> {
 
     typedef detail::Invokable<R, A1> Slot;
     typedef typename detail::SlotContainer<Slot*>::type Slots;
-    typedef typename Slots::iterator SlotsIt;
-    typedef typename Slots::const_iterator SlotsCIt;
 
     typedef detail::Mutex::type Mutex_;
     typedef detail::ScopedLock::type ScopedLock_;
@@ -1062,55 +1058,53 @@ struct Signal<R()> {
 
     void connect(R (*member)()) {
         ScopedLock_ lock(slotsMutex);
-        slots.push_back(new GCaller(member));
+        detail::connect(slots,new GCaller(member));
     }
 
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)()) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
-        slots.push_back(new MCaller_(obj, member));
+        detail::connect(slots,new MCaller_(obj, member));
     }
 
     template <typename TObj>
     void connect(TObj const& obj, R (TObj::*member)() const) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
-        slots.push_back(new MCaller_(obj, member));
+        detail::connect(slots,new MCaller_(obj, member));
     }
 
     detail::ReturnValueAggregate<R> emit() {
         ScopedLock_ lock(slotsMutex);
         Args args;
         detail::ReturnValueAggregate<R> r;
-        detail::ReturnValueAggregatox<R>::template invokeAndAggregate<Slots,Args>(r, slots, args);
+        detail::ReturnValueAggregator<R>::invokeAndAggregate(r, slots, args);
         return r;
     }
 
     void disconnect(R (*member)()) {
         ScopedLock_ lock(slotsMutex);
-        detail::remove(slots,GCaller(member));
+        detail::disconnect(slots,GCaller(member));
     }
 
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)()) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
-        detail::remove(slots,MCaller_(obj,member));
+        detail::disconnect(slots,MCaller_(obj,member));
     }
 
     template <typename TObj>
     void disconnect(TObj const & obj, R (TObj::*member)() const) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
-        detail::remove(slots,MCaller_(obj,member));
+        detail::disconnect(slots,MCaller_(obj,member));
     }
 
     void disconnectAll(){
         ScopedLock_ lock(slotsMutex);
-         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
-             delete *it;
-         slots.clear();
+        detail::disconnectAll(slots);
     }
 
     ~Signal(){ disconnectAll(); }
@@ -1125,8 +1119,6 @@ struct Signal<R()> {
 
     typedef detail::Invokable<R> Slot;
     typedef typename detail::SlotContainer<Slot*>::type Slots;
-    typedef typename Slots::iterator SlotsIt;
-    typedef typename Slots::const_iterator SlotsCIt;
 
     typedef detail::Mutex::type Mutex_;
     typedef detail::ScopedLock::type ScopedLock_;
