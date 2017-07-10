@@ -647,6 +647,12 @@ struct InvokableImpl<void> {
     };
 };
 
+struct ScopedInversion{
+    bool& target;
+    const bool origValue;
+    ScopedInversion(bool& target_):target(target_),origValue(target_){target = !target;}
+    ~ScopedInversion(){target = origValue;}
+};
 
 /**
  * @brief Comparing of 2 invokable instances
@@ -748,7 +754,6 @@ struct Signal;
 template <typename R, typename A1, typename A2, typename A3,typename A4>
 struct Signal<R(A1, A2, A3, A4)> {
 
-
     void connect(R (*member)(A1, A2, A3, A4)) {
         ScopedLock_ lock(slotsMutex);
         detail::connect(slots,new GCaller(member));
@@ -761,7 +766,6 @@ struct Signal<R(A1, A2, A3, A4)> {
         detail::connect(slots,new MCaller_(obj, member));
     }
 
-
     template <typename TObj>
     void connect(TObj const& obj, R (TObj::*member)(A1, A2, A3, A4) const) {
         ScopedLock_ lock(slotsMutex);
@@ -773,6 +777,8 @@ struct Signal<R(A1, A2, A3, A4)> {
         ScopedLock_ lock(slotsMutex);
         Args args(a1,a2,a3,a4);
         detail::ReturnValueAggregate<R> r;
+        if (isCurrentlyEmitting) return r;
+        detail::ScopedInversion inverter(isCurrentlyEmitting);
         detail::ReturnValueAggregator<R>::invokeAndAggregate(r, slots, args);
         return r;
     }
@@ -817,6 +823,8 @@ struct Signal<R(A1, A2, A3, A4)> {
     typedef detail::Mutex::type Mutex_;
     typedef detail::ScopedLock::type ScopedLock_;
 
+    bool isCurrentlyEmitting = false;
+
     Slots slots;
     Mutex_ slotsMutex;
 };
@@ -849,6 +857,8 @@ struct Signal<R(A1, A2, A3)> {
         ScopedLock_ lock(slotsMutex);
         Args args(a1,a2,a3);
         detail::ReturnValueAggregate<R> r;
+        if (isCurrentlyEmitting) return r;
+        detail::ScopedInversion inverter(isCurrentlyEmitting);
         detail::ReturnValueAggregator<R>::invokeAndAggregate(r, slots, args);
         return r;
     }
@@ -893,6 +903,7 @@ struct Signal<R(A1, A2, A3)> {
     typedef detail::Mutex::type Mutex_;
     typedef detail::ScopedLock::type ScopedLock_;
 
+    bool isCurrentlyEmitting = false;
     Slots slots;
     Mutex_ slotsMutex;
 };
@@ -926,6 +937,8 @@ struct Signal<R(A1, A2)> {
         ScopedLock_ lock(slotsMutex);
         Args args(a1,a2);
         detail::ReturnValueAggregate<R> r;
+        if (isCurrentlyEmitting) return r;
+        detail::ScopedInversion inverter(isCurrentlyEmitting);
         detail::ReturnValueAggregator<R>::invokeAndAggregate(r, slots, args);
         return r;
     }
@@ -970,6 +983,7 @@ struct Signal<R(A1, A2)> {
     typedef detail::Mutex::type Mutex_;
     typedef detail::ScopedLock::type ScopedLock_;
 
+    bool isCurrentlyEmitting = false;
     Slots slots;
     Mutex_ slotsMutex;
 };
@@ -1003,6 +1017,8 @@ struct Signal<R(A1)> {
         ScopedLock_ lock(slotsMutex);
         Args args(a1);
         detail::ReturnValueAggregate<R> r;
+        if (isCurrentlyEmitting) return r;
+        detail::ScopedInversion inverter(isCurrentlyEmitting);
         detail::ReturnValueAggregator<R>::invokeAndAggregate(r, slots, args);
         return r;
     }
@@ -1047,6 +1063,7 @@ struct Signal<R(A1)> {
     typedef detail::Mutex::type Mutex_;
     typedef detail::ScopedLock::type ScopedLock_;
 
+    bool isCurrentlyEmitting = false;
     Slots slots;
     Mutex_ slotsMutex;
 };
@@ -1079,6 +1096,8 @@ struct Signal<R()> {
         ScopedLock_ lock(slotsMutex);
         Args args;
         detail::ReturnValueAggregate<R> r;
+        if (isCurrentlyEmitting) return r;
+        detail::ScopedInversion inverter(isCurrentlyEmitting);
         detail::ReturnValueAggregator<R>::invokeAndAggregate(r, slots, args);
         return r;
     }
@@ -1123,6 +1142,7 @@ struct Signal<R()> {
     typedef detail::Mutex::type Mutex_;
     typedef detail::ScopedLock::type ScopedLock_;
 
+    bool isCurrentlyEmitting = false;
     Slots slots;
     Mutex_ slotsMutex;
 };
