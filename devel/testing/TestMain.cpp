@@ -1240,7 +1240,23 @@ void testSignal_correct_call_seq_nvoid(){
 
 }
 
+void incrementReference(int& ref){ ++ref;}
+
+void testSignal_refrences_return(){
+
+    {
+        Signal<void(int&)> c;
+        c.connect(&incrementReference);
+        c.connect(&incrementReference);
+        c.connect(&incrementReference);
+
+        int n = 7;
+        c.emit(n);
+        assert(n==10);
+    }
+}
 void testSignal(){
+    testSignal_refrences_return();
     testSignal_correct_call_seq_void();
     testSignal_correct_call_seq_nvoid();
     testSignal_remove_double_entry();
@@ -1249,6 +1265,7 @@ void testSignal(){
 
 
 TestMain::TestMain() {
+
 
     testInvokable();
     testSignal();

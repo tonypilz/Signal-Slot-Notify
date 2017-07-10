@@ -349,6 +349,49 @@ struct InvokableImpl {
         TObj& m_obj;
         Member m_member;
     };
+
+    template <typename A1 = void, typename A2 = void, typename A3 = void, typename A4 = void, typename A5 = void, typename isDefault = Default>
+    struct BoundFunction;
+
+    template <typename A1, typename A2, typename A3, typename A4>
+    struct BoundFunction<A1, A2, A3, A4> {
+        A1 a1;
+        A2 a2;
+        A3 a3;
+        A4 a4;
+        BoundFunction(A1 a1_, A2 a2_, A3 a3_, A4 a4_):a1(a1_),a2(a2_),a3(a3_),a4(a4_){}
+        virtual R_ operator()(Invokable<R_,A1, A2, A3, A4>& invokable) { return invokable(a1,a2,a3,a4); }
+    };
+
+    template <typename A1, typename A2, typename A3>
+    struct BoundFunction<A1, A2, A3> {
+        A1 a1;
+        A2 a2;
+        A3 a3;
+        BoundFunction(A1 a1_, A2 a2_, A3 a3_):a1(a1_),a2(a2_),a3(a3_){}
+        virtual R_ operator()(Invokable<R_,A1, A2, A3>& invokable) { return invokable(a1,a2,a3); }
+    };
+
+    template <typename A1, typename A2>
+    struct BoundFunction<A1, A2> {
+        A1 a1;
+        A2 a2;
+        BoundFunction(A1 a1_, A2 a2_):a1(a1_),a2(a2_){}
+        virtual R_ operator()(Invokable<R_,A1, A2>& invokable) { return invokable(a1,a2); }
+    };
+
+    template <typename A1>
+    struct BoundFunction<A1> {
+        A1 a1;
+        BoundFunction(A1 a1_):a1(a1_){}
+        virtual R_ operator()(Invokable<R_,A1>& invokable) { return invokable(a1); }
+    };
+
+    template<typename isDefault>  // must have at least one template parameter to compile!
+    struct BoundFunction<void,void,void,void,void,isDefault> {
+        BoundFunction(){}
+        virtual R_ operator()(Invokable<R_>& invokable) { return invokable(); }
+    };
 };
 template <>
 struct InvokableImpl<void> {
@@ -559,6 +602,49 @@ struct InvokableImpl<void> {
         TObj& m_obj;
         Member m_member;
     };
+
+    template <typename A1 = void, typename A2 = void, typename A3 = void, typename A4 = void, typename A5 = void, typename isDefault = Default>
+    struct BoundFunction;
+
+    template <typename A1, typename A2, typename A3, typename A4>
+    struct BoundFunction<A1, A2, A3, A4> {
+        A1 a1;
+        A2 a2;
+        A3 a3;
+        A4 a4;
+        BoundFunction(A1 a1_, A2 a2_, A3 a3_, A4 a4_):a1(a1_),a2(a2_),a3(a3_),a4(a4_){}
+        virtual R_ operator()(Invokable<R_,A1, A2, A3, A4>& invokable) { invokable(a1,a2,a3,a4); }
+    };
+
+    template <typename A1, typename A2, typename A3>
+    struct BoundFunction<A1, A2, A3> {
+        A1 a1;
+        A2 a2;
+        A3 a3;
+        BoundFunction(A1 a1_, A2 a2_, A3 a3_):a1(a1_),a2(a2_),a3(a3_){}
+        virtual R_ operator()(Invokable<R_,A1, A2, A3>& invokable) { invokable(a1,a2,a3); }
+    };
+
+    template <typename A1, typename A2>
+    struct BoundFunction<A1, A2> {
+        A1 a1;
+        A2 a2;
+        BoundFunction(A1 a1_, A2 a2_):a1(a1_),a2(a2_){}
+        virtual R_ operator()(Invokable<R_,A1, A2>& invokable) { invokable(a1,a2); }
+    };
+
+    template <typename A1>
+    struct BoundFunction<A1> {
+        A1 a1;
+        BoundFunction(A1 a1_):a1(a1_){}
+        virtual R_ operator()(Invokable<R_,A1>& invokable) { invokable(a1); }
+    };
+
+    template<typename isDefault>  // must have at least one template parameter to compile!
+    struct BoundFunction<void,void,void,void,void,isDefault> {
+        BoundFunction(){}
+        virtual R_ operator()(Invokable<R_>& invokable) { invokable(); }
+    };
 };
 
 
@@ -607,64 +693,33 @@ void aggregateReturnValue(OutType_& c, CallResult const& r) {
     c.out.push_back(r);
 }
 
-
 template <typename R>
-struct ReturnValueAggregator {
+struct ReturnValueAggregatox {
 
     typedef R R_;
 
-    template <typename A1, typename A2, typename A3, typename A4>
-    static void invokeAndAggregate(ReturnValueAggregate<R_>& r, Invokable<R_, A1, A2, A3, A4>* c, A1 a1, A2 a2, A3 a3, A4 a4) {
-        aggregateReturnValue(r,c->operator()(a1, a2, a3, a4));
-    }
+    template <typename Slots, typename Args>
+    static void invokeAndAggregate(ReturnValueAggregate<R_>& r, Slots& slots, Args& args) {
 
-    template <typename A1, typename A2, typename A3>
-    static void invokeAndAggregate(ReturnValueAggregate<R_>& r, Invokable<R_, A1, A2, A3>* c, A1 a1, A2 a2, A3 a3) {
-        aggregateReturnValue(r,c->operator()(a1, a2, a3));
-    }
-
-    template <typename A1, typename A2>
-    static void invokeAndAggregate(ReturnValueAggregate<R_>& r, Invokable<R_, A1, A2>* c, A1 a1, A2 a2) {
-        aggregateReturnValue(r,c->operator()(a1, a2));
-    }
-
-    template <typename A1>
-    static void invokeAndAggregate(ReturnValueAggregate<R_>& r, Invokable<R_, A1>* c, A1 a1) {
-        aggregateReturnValue(r,c->operator()(a1));
-    }
-
-    static void invokeAndAggregate(ReturnValueAggregate<R_>& r, Invokable<R_>* c) {
-        aggregateReturnValue(r,c->operator()());
+        typedef typename Slots::const_iterator SlotsCIt;
+        for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it) {
+             aggregateReturnValue(r,args(*(*it)));
+        }
     }
 };
 
 template <>
-struct ReturnValueAggregator<void> {
+struct ReturnValueAggregatox<void> {
 
     typedef void R_;
 
-    template <typename A1, typename A2, typename A3, typename A4>
-    static void invokeAndAggregate(ReturnValueAggregate<R_>&, Invokable<R_, A1, A2, A3, A4>* c, A1 a1, A2 a2, A3 a3, A4 a4) {
-        c->operator()(a1, a2, a3, a4);
-    }
+    template <typename Slots, typename Args>
+    static void invokeAndAggregate(ReturnValueAggregate<R_>&, Slots& slots, Args& args) {
 
-    template <typename A1, typename A2, typename A3>
-    static void invokeAndAggregate(ReturnValueAggregate<R_>&, Invokable<R_, A1, A2, A3>* c, A1 a1, A2 a2, A3 a3) {
-        c->operator()(a1, a2, a3);
-    }
-
-    template <typename A1, typename A2>
-    static void invokeAndAggregate(ReturnValueAggregate<R_>&, Invokable<R_, A1, A2>* c, A1 a1, A2 a2) {
-        c->operator()(a1, a2);
-    }
-
-    template <typename A1>
-    static void invokeAndAggregate(ReturnValueAggregate<R_>&, Invokable<R_, A1>* c, A1 a1) {
-        c->operator()(a1);
-    }
-
-    static void invokeAndAggregate(ReturnValueAggregate<R_>&, Invokable<R_>* c) {
-        c->operator()();
+        typedef typename Slots::const_iterator SlotsCIt;
+        for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it) {
+             args(*(*it));
+        }
     }
 };
 
@@ -704,9 +759,9 @@ struct Signal<R(A1, A2, A3, A4)> {
 
     detail::ReturnValueAggregate<R> emit(A1 a1, A2 a2, A3 a3, A4 a4) {
         ScopedLock_ lock(slotsMutex);
+        Args args(a1,a2,a3,a4);
         detail::ReturnValueAggregate<R> r;
-        for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
-            detail::ReturnValueAggregator<R>::template invokeAndAggregate<A1, A2, A3, A4>(r, *it, a1, a2, a3, a4);
+        detail::ReturnValueAggregatox<R>::template invokeAndAggregate<Slots,Args>(r, slots, args);
         return r;
     }
 
@@ -740,6 +795,7 @@ struct Signal<R(A1, A2, A3, A4)> {
 
    private:
 
+    typedef typename detail::InvokableImpl<R>::template BoundFunction<A1, A2, A3, A4> Args;
     typedef typename detail::InvokableImpl<R>::template GlobalFunction<A1, A2, A3, A4> GCaller;
 
     template <typename TObj, typename Constness>
@@ -783,9 +839,9 @@ struct Signal<R(A1, A2, A3)> {
 
     detail::ReturnValueAggregate<R> emit(A1 a1, A2 a2, A3 a3) {
         ScopedLock_ lock(slotsMutex);
+        Args args(a1,a2,a3);
         detail::ReturnValueAggregate<R> r;
-        for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
-            detail::ReturnValueAggregator<R>::template invokeAndAggregate<A1, A2, A3>(r, *it, a1, a2, a3);
+        detail::ReturnValueAggregatox<R>::template invokeAndAggregate<Slots,Args>(r, slots, args);
         return r;
     }
 
@@ -819,6 +875,7 @@ struct Signal<R(A1, A2, A3)> {
 
    private:
 
+    typedef typename detail::InvokableImpl<R>::template BoundFunction<A1, A2, A3> Args;
     typedef typename detail::InvokableImpl<R>::template GlobalFunction<A1, A2, A3> GCaller;
 
     template <typename TObj, typename Constness>
@@ -863,9 +920,9 @@ struct Signal<R(A1, A2)> {
 
     detail::ReturnValueAggregate<R> emit(A1 a1, A2 a2) {
         ScopedLock_ lock(slotsMutex);
+        Args args(a1,a2);
         detail::ReturnValueAggregate<R> r;
-        for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
-            detail::ReturnValueAggregator<R>::template invokeAndAggregate<A1, A2>(r, *it, a1, a2);
+        detail::ReturnValueAggregatox<R>::template invokeAndAggregate<Slots,Args>(r, slots, args);
         return r;
     }
 
@@ -899,6 +956,7 @@ struct Signal<R(A1, A2)> {
 
    private:
 
+    typedef typename detail::InvokableImpl<R>::template BoundFunction<A1, A2> Args;
     typedef typename detail::InvokableImpl<R>::template GlobalFunction<A1, A2> GCaller;
 
     template <typename TObj, typename Constness>
@@ -943,9 +1001,9 @@ struct Signal<R(A1)> {
 
     detail::ReturnValueAggregate<R> emit(A1 a1) {
         ScopedLock_ lock(slotsMutex);
+        Args args(a1);
         detail::ReturnValueAggregate<R> r;
-        for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
-            detail::ReturnValueAggregator<R>::template invokeAndAggregate<A1>(r, *it, a1);
+        detail::ReturnValueAggregatox<R>::template invokeAndAggregate<Slots,Args>(r, slots, args);
         return r;
     }
 
@@ -979,6 +1037,7 @@ struct Signal<R(A1)> {
 
    private:
 
+    typedef typename detail::InvokableImpl<R>::template BoundFunction<A1> Args;
     typedef typename detail::InvokableImpl<R>::template GlobalFunction<A1> GCaller;
 
     template <typename TObj, typename Constness>
@@ -1022,9 +1081,9 @@ struct Signal<R()> {
 
     detail::ReturnValueAggregate<R> emit() {
         ScopedLock_ lock(slotsMutex);
+        Args args;
         detail::ReturnValueAggregate<R> r;
-        for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
-            detail::ReturnValueAggregator<R>::invokeAndAggregate(r, *it);
+        detail::ReturnValueAggregatox<R>::template invokeAndAggregate<Slots,Args>(r, slots, args);
         return r;
     }
 
@@ -1058,6 +1117,7 @@ struct Signal<R()> {
 
    private:
 
+    typedef typename detail::InvokableImpl<R>::template BoundFunction<void, void, void, void, void, detail::NonDefault> Args;
     typedef typename detail::InvokableImpl<R>::template GlobalFunction<void, void, void, void, void, detail::NonDefault> GCaller;
 
     template <typename TObj, typename Constness>
