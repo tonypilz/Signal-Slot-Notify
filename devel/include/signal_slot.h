@@ -1,7 +1,7 @@
 #pragma once
 
-#include <vector>
-#include <algorithm>
+#include <vector> //for containers
+#include <algorithm> //for remove_if
 #include <utility>  //for pair
 #include <cassert>
 
