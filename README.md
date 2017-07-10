@@ -71,10 +71,10 @@ Pedestrian wait
  - Const-Correct
  - Recursion-Correct
  - Customizable synchronization primitives (mutex/scopedLock)
- - Customizable handling of return values* 
+ - Customizable handling of return values(1) 
  - Tested
  
- * Currently a std::vector of all return values is returned.
+(1) Currently a std::vector of all return values is returned.
  
 # Limitations
  - Currently up to 4 function arguments are supported. If more are required one can use structs or extend the header file to support more. 
