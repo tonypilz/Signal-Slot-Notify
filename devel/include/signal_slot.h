@@ -2,6 +2,8 @@
 
 #include <vector>
 #include <algorithm>
+#include <utility>  //for pair
+#include <cassert>
 
 namespace sisl {  // signal slot
 
@@ -654,43 +656,86 @@ struct ScopedInversion{
     ~ScopedInversion(){target = origValue;}
 };
 
-/**
- * @brief Comparing of 2 invokable instances
- */
-template<typename TInvokable>
-struct IsEqual {
 
-    IsEqual(TInvokable const& c):invokable(c){}
-    TInvokable const& invokable;
 
-    bool operator()(typename TInvokable::Superclass const* other)const{
-        TInvokable const* t = dynamic_cast<TInvokable const*>(other);
-        return t!=NULL ? invokable.isEqual(*t) : false;
+typedef bool DisconnectionPending;
+inline DisconnectionPending disconnectPending(){return true;}
+inline DisconnectionPending connected(){return disconnectPending()==false;}
+
+
+template<typename TInvokablePtr>
+struct IsPendingDisconnect {
+
+    typedef std::pair<TInvokablePtr,bool> Slot;
+
+    bool operator()(Slot const& other)const{
+        return other.second == disconnectPending();
     }
 };
 
 
 /**
+ * @brief Comparing of 2 invokable instances
+ */
+template<typename TInvokable>
+struct IsCaller {
+
+    typedef std::pair<typename TInvokable::Superclass*,bool> Slot;
+
+    IsCaller(TInvokable const& c):invokable(c){}
+    TInvokable const& invokable;
+
+    bool operator()(Slot const& other)const{
+        TInvokable const* t = dynamic_cast<TInvokable const*>(other.first);
+        return t!=NULL ? invokable.isEqual(*t) : false;
+    }
+};
+
+
+
+
+/**
  * Removing a slot from the list of slots
  */
-template<typename Slots, typename TCaller>
-void disconnect(Slots& slots, TCaller const& caller){
-    typedef typename Slots::iterator It;
+template<typename Slots>
+void disconnectNow(Slots& slots){
 
-    const IsEqual<TCaller> pred(caller);
+    const IsPendingDisconnect<typename Slots::value_type::first_type> pred;
 
-    Slots toDelete;
-
+    typedef typename Slots::const_iterator It;
     for(It it = slots.begin(), end = slots.end();it!=end;++it)
         if (pred(*it))
-            toDelete.push_back(*it);
+            delete it->first;
 
-
-    slots.erase(std::remove_if(slots.begin(),slots.end(), IsEqual<TCaller>(caller)), slots.end());
-
-    for(It it = toDelete.begin(), end = toDelete.end();it!=end;++it)
-        delete *it;
+    slots.erase(std::remove_if(slots.begin(),slots.end(), pred), slots.end());
 }
+
+template<typename Slots, typename TCaller>
+void disconnectDelayed(Slots& slots, TCaller const& caller){
+
+    const IsCaller<TCaller> pred(caller);
+
+    typedef typename Slots::iterator It;
+    for(It it = slots.begin(), end = slots.end();it!=end;++it)
+        if (pred(*it))
+            it->second = disconnectPending();
+
+}
+
+
+template<typename Slots, typename TCaller>
+void disconnect(Slots& slots, bool isCurrentlyEmitting, TCaller const& caller){
+
+    disconnectDelayed(slots,caller);
+
+    if (!isCurrentlyEmitting)
+        disconnectNow(slots);
+}
+
+/**
+ * Removing a slot from the list of slots
+ */
+
 
 template<typename Slots>
 void disconnectAll(Slots& slots){
@@ -700,6 +745,30 @@ void disconnectAll(Slots& slots){
     slots.clear();
 }
 
+template<typename Slots>
+void disconnectAllNow(Slots& slots){
+    typedef typename Slots::const_iterator SlotsCIt;
+    for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
+        delete it->first;
+    slots.clear();
+}
+
+template<typename Slots>
+void disconnectAllDelayed(Slots& slots){
+    typedef typename Slots::iterator SlotsCIt;
+    for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it)
+        it->second = disconnectPending();
+
+}
+
+template<typename Slots>
+void disconnectAll(Slots& slots, bool isCurrentlyEmitting){
+    if (isCurrentlyEmitting)
+        disconnectAllDelayed(slots);
+    else
+        disconnectAllNow(slots);
+
+}
 
 template<typename OutType_, typename CallResult>
 void aggregateReturnValue(OutType_& c, CallResult const& r) {
@@ -716,7 +785,7 @@ struct ReturnValueAggregator {
 
         typedef typename Slots::const_iterator SlotsCIt;
         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it) {
-             aggregateReturnValue(r,args(*(*it)));
+             aggregateReturnValue(r,args(*(it->first)));
         }
     }
 };
@@ -731,16 +800,33 @@ struct ReturnValueAggregator<void> {
 
         typedef typename Slots::const_iterator SlotsCIt;
         for (SlotsCIt it = slots.begin(), end = slots.end(); it != end; ++it) {
-             args(*(*it));
+             args(*(it->first));
         }
     }
 };
 
 
 template<typename Slots, typename Invokable>
-void connect(Slots& slots, Invokable* invokable){
+void connect(Slots& slots, Invokable invokable){
     slots.push_back(invokable);
 }
+
+
+template<typename Slots>
+void connectPending(Slots& slots, Slots& pendingConnects){
+
+    typedef typename Slots::const_iterator SlotsCIt;
+    for (SlotsCIt it = pendingConnects.begin(), end = pendingConnects.end(); it != end; ++it)
+         connect(slots,*it);
+
+    pendingConnects.clear();
+}
+
+template<typename Slots>
+void disconnectPending(Slots& slots){
+    disconnectNow(slots);
+}
+
 
 } //namespace detail
 
@@ -756,21 +842,21 @@ struct Signal<R(A1, A2, A3, A4)> {
 
     void connect(R (*member)(A1, A2, A3, A4)) {
         ScopedLock_ lock(slotsMutex);
-        detail::connect(slots,new GCaller(member));
+        detail::connect(isCurrentlyEmitting ? pendingConnects : slots, Slot(new GCaller(member),detail::connected()));
     }
 
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1, A2, A3, A4)) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
-        detail::connect(slots,new MCaller_(obj, member));
+        detail::connect(isCurrentlyEmitting ? pendingConnects : slots, Slot(new MCaller_(obj, member),detail::connected()));
     }
 
     template <typename TObj>
     void connect(TObj const& obj, R (TObj::*member)(A1, A2, A3, A4) const) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
-        detail::connect(slots,new MCaller_(obj, member));
+        detail::connect(isCurrentlyEmitting ? pendingConnects : slots, Slot(new MCaller_(obj, member),detail::connected()));
     }
 
     detail::ReturnValueAggregate<R> emit(A1 a1, A2 a2, A3 a3, A4 a4) {
@@ -780,51 +866,52 @@ struct Signal<R(A1, A2, A3, A4)> {
         if (isCurrentlyEmitting) return r;
         detail::ScopedInversion inverter(isCurrentlyEmitting);
         detail::ReturnValueAggregator<R>::invokeAndAggregate(r, slots, args);
+        detail::disconnectPending(slots);
+        detail::connectPending(slots, pendingConnects);
         return r;
     }
 
     void disconnect(R (*member)(A1, A2, A3, A4)) {
         ScopedLock_ lock(slotsMutex);
-        detail::disconnect(slots,GCaller(member));
+        detail::disconnect(slots, isCurrentlyEmitting, GCaller(member));
     }
 
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)(A1, A2, A3, A4)) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
-        detail::disconnect(slots,MCaller_(obj,member));
+        detail::disconnect(slots, isCurrentlyEmitting, MCaller_(obj,member));
     }
 
     template <typename TObj>
     void disconnect(TObj const& obj, R (TObj::*member)(A1, A2, A3, A4) const) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
-        detail::disconnect(slots,MCaller_(obj,member));
+        detail::disconnect(slots, isCurrentlyEmitting, MCaller_(obj,member));
     }
 
     void disconnectAll(){
         ScopedLock_ lock(slotsMutex);
-        detail::disconnectAll(slots);
+        detail::disconnectAll(slots, isCurrentlyEmitting);
     }
 
-    ~Signal(){ disconnectAll(); }
+    ~Signal(){ assert(isCurrentlyEmitting==false); disconnectAll(); } //upon returning from dtor object is invalid so a pending emit()-call would be invalid too!
 
    private:
-
     typedef typename detail::InvokableImpl<R>::template BoundFunction<A1, A2, A3, A4> Args;
     typedef typename detail::InvokableImpl<R>::template GlobalFunction<A1, A2, A3, A4> GCaller;
 
     template <typename TObj, typename Constness>
     struct MCaller{ typedef typename detail::InvokableImpl<R>::template MemberFunction<TObj, Constness, A1, A2, A3, A4> type; };
 
-    typedef detail::Invokable<R, A1, A2, A3, A4> Slot;
-    typedef typename detail::SlotContainer<Slot*>::type Slots;
+    typedef std::pair<detail::Invokable<R, A1, A2, A3, A4>*,detail::DisconnectionPending> Slot;
+    typedef typename detail::SlotContainer<Slot>::type Slots;
 
     typedef detail::Mutex::type Mutex_;
     typedef detail::ScopedLock::type ScopedLock_;
 
     bool isCurrentlyEmitting = false;
-
+    Slots pendingConnects;
     Slots slots;
     Mutex_ slotsMutex;
 };
@@ -832,25 +919,23 @@ struct Signal<R(A1, A2, A3, A4)> {
 template <typename R, typename A1, typename A2, typename A3>
 struct Signal<R(A1, A2, A3)> {
 
-
     void connect(R (*member)(A1, A2, A3)) {
         ScopedLock_ lock(slotsMutex);
-        detail::connect(slots,new GCaller(member));
+        detail::connect(isCurrentlyEmitting ? pendingConnects : slots, Slot(new GCaller(member),detail::connected()));
     }
 
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1, A2, A3)) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
-        detail::connect(slots,new MCaller_(obj, member));
+        detail::connect(isCurrentlyEmitting ? pendingConnects : slots, Slot(new MCaller_(obj, member),detail::connected()));
     }
-
 
     template <typename TObj>
     void connect(TObj const& obj, R (TObj::*member)(A1, A2, A3) const) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
-        detail::connect(slots,new MCaller_(obj, member));
+        detail::connect(isCurrentlyEmitting ? pendingConnects : slots, Slot(new MCaller_(obj, member),detail::connected()));
     }
 
     detail::ReturnValueAggregate<R> emit(A1 a1, A2 a2, A3 a3) {
@@ -860,77 +945,78 @@ struct Signal<R(A1, A2, A3)> {
         if (isCurrentlyEmitting) return r;
         detail::ScopedInversion inverter(isCurrentlyEmitting);
         detail::ReturnValueAggregator<R>::invokeAndAggregate(r, slots, args);
+        detail::disconnectPending(slots);
+        detail::connectPending(slots, pendingConnects);
         return r;
     }
 
     void disconnect(R (*member)(A1, A2, A3)) {
         ScopedLock_ lock(slotsMutex);
-        detail::disconnect(slots,GCaller(member));
+        detail::disconnect(slots, isCurrentlyEmitting, GCaller(member));
     }
 
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)(A1, A2, A3)) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
-        detail::disconnect(slots,MCaller_(obj,member));
+        detail::disconnect(slots, isCurrentlyEmitting, MCaller_(obj,member));
     }
 
     template <typename TObj>
     void disconnect(TObj const& obj, R (TObj::*member)(A1, A2, A3) const) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
-        detail::disconnect(slots,MCaller_(obj,member));
+        detail::disconnect(slots, isCurrentlyEmitting, MCaller_(obj,member));
     }
 
     void disconnectAll(){
         ScopedLock_ lock(slotsMutex);
-        detail::disconnectAll(slots);
+        detail::disconnectAll(slots, isCurrentlyEmitting);
     }
 
-    ~Signal(){ disconnectAll(); }
+    ~Signal(){ assert(isCurrentlyEmitting==false); disconnectAll(); } //upon returning from dtor object is invalid so a pending emit()-call would be invalid too!
 
    private:
-
     typedef typename detail::InvokableImpl<R>::template BoundFunction<A1, A2, A3> Args;
     typedef typename detail::InvokableImpl<R>::template GlobalFunction<A1, A2, A3> GCaller;
 
     template <typename TObj, typename Constness>
     struct MCaller{ typedef typename detail::InvokableImpl<R>::template MemberFunction<TObj, Constness, A1, A2, A3> type; };
 
-    typedef detail::Invokable<R, A1, A2, A3> Slot;
-    typedef typename detail::SlotContainer<Slot*>::type Slots;
+    typedef std::pair<detail::Invokable<R, A1, A2, A3>*,detail::DisconnectionPending> Slot;
+    typedef typename detail::SlotContainer<Slot>::type Slots;
 
     typedef detail::Mutex::type Mutex_;
     typedef detail::ScopedLock::type ScopedLock_;
 
     bool isCurrentlyEmitting = false;
+    Slots pendingConnects;
     Slots slots;
     Mutex_ slotsMutex;
 };
 
 
+
 template <typename R, typename A1, typename A2>
 struct Signal<R(A1, A2)> {
 
-
     void connect(R (*member)(A1, A2)) {
         ScopedLock_ lock(slotsMutex);
-        detail::connect(slots,new GCaller(member));
+        detail::connect(isCurrentlyEmitting ? pendingConnects : slots, Slot(new GCaller(member),detail::connected()));
     }
 
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1, A2)) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
-        detail::connect(slots,new MCaller_(obj, member));
+        detail::connect(isCurrentlyEmitting ? pendingConnects : slots, Slot(new MCaller_(obj, member),detail::connected()));
     }
-
 
     template <typename TObj>
     void connect(TObj const& obj, R (TObj::*member)(A1, A2) const) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
-        detail::connect(slots,new MCaller_(obj, member));
+        detail::connect(isCurrentlyEmitting ? pendingConnects : slots, Slot(new MCaller_(obj, member),detail::connected()));
     }
 
     detail::ReturnValueAggregate<R> emit(A1 a1, A2 a2) {
@@ -940,77 +1026,78 @@ struct Signal<R(A1, A2)> {
         if (isCurrentlyEmitting) return r;
         detail::ScopedInversion inverter(isCurrentlyEmitting);
         detail::ReturnValueAggregator<R>::invokeAndAggregate(r, slots, args);
+        detail::disconnectPending(slots);
+        detail::connectPending(slots, pendingConnects);
         return r;
     }
 
     void disconnect(R (*member)(A1, A2)) {
         ScopedLock_ lock(slotsMutex);
-        detail::disconnect(slots,GCaller(member));
+        detail::disconnect(slots, isCurrentlyEmitting, GCaller(member));
     }
 
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)(A1, A2)) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
-        detail::disconnect(slots,MCaller_(obj,member));
+        detail::disconnect(slots, isCurrentlyEmitting, MCaller_(obj,member));
     }
 
     template <typename TObj>
     void disconnect(TObj const& obj, R (TObj::*member)(A1, A2) const) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
-        detail::disconnect(slots,MCaller_(obj,member));
+        detail::disconnect(slots, isCurrentlyEmitting, MCaller_(obj,member));
     }
 
     void disconnectAll(){
         ScopedLock_ lock(slotsMutex);
-        detail::disconnectAll(slots);
+        detail::disconnectAll(slots, isCurrentlyEmitting);
     }
 
-    ~Signal(){ disconnectAll(); }
+    ~Signal(){ assert(isCurrentlyEmitting==false); disconnectAll(); } //upon returning from dtor object is invalid so a pending emit()-call would be invalid too!
 
    private:
-
     typedef typename detail::InvokableImpl<R>::template BoundFunction<A1, A2> Args;
     typedef typename detail::InvokableImpl<R>::template GlobalFunction<A1, A2> GCaller;
 
     template <typename TObj, typename Constness>
     struct MCaller{ typedef typename detail::InvokableImpl<R>::template MemberFunction<TObj, Constness, A1, A2> type; };
 
-    typedef detail::Invokable<R, A1, A2> Slot;
-    typedef typename detail::SlotContainer<Slot*>::type Slots;
+    typedef std::pair<detail::Invokable<R, A1, A2>*,detail::DisconnectionPending> Slot;
+    typedef typename detail::SlotContainer<Slot>::type Slots;
 
     typedef detail::Mutex::type Mutex_;
     typedef detail::ScopedLock::type ScopedLock_;
 
     bool isCurrentlyEmitting = false;
+    Slots pendingConnects;
     Slots slots;
     Mutex_ slotsMutex;
 };
 
 
+
 template <typename R, typename A1>
 struct Signal<R(A1)> {
 
-
     void connect(R (*member)(A1)) {
         ScopedLock_ lock(slotsMutex);
-        detail::connect(slots,new GCaller(member));
+        detail::connect(isCurrentlyEmitting ? pendingConnects : slots, Slot(new GCaller(member),detail::connected()));
     }
 
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)(A1)) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
-        detail::connect(slots,new MCaller_(obj, member));
+        detail::connect(isCurrentlyEmitting ? pendingConnects : slots, Slot(new MCaller_(obj, member),detail::connected()));
     }
-
 
     template <typename TObj>
     void connect(TObj const& obj, R (TObj::*member)(A1) const) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
-        detail::connect(slots,new MCaller_(obj, member));
+        detail::connect(isCurrentlyEmitting ? pendingConnects : slots, Slot(new MCaller_(obj, member),detail::connected()));
     }
 
     detail::ReturnValueAggregate<R> emit(A1 a1) {
@@ -1020,76 +1107,78 @@ struct Signal<R(A1)> {
         if (isCurrentlyEmitting) return r;
         detail::ScopedInversion inverter(isCurrentlyEmitting);
         detail::ReturnValueAggregator<R>::invokeAndAggregate(r, slots, args);
+        detail::disconnectPending(slots);
+        detail::connectPending(slots, pendingConnects);
         return r;
     }
 
     void disconnect(R (*member)(A1)) {
         ScopedLock_ lock(slotsMutex);
-        detail::disconnect(slots,GCaller(member));
+        detail::disconnect(slots, isCurrentlyEmitting, GCaller(member));
     }
 
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)(A1)) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
-        detail::disconnect(slots,MCaller_(obj,member));
+        detail::disconnect(slots, isCurrentlyEmitting, MCaller_(obj,member));
     }
 
     template <typename TObj>
     void disconnect(TObj const& obj, R (TObj::*member)(A1) const) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
-        detail::disconnect(slots,MCaller_(obj,member));
+        detail::disconnect(slots, isCurrentlyEmitting, MCaller_(obj,member));
     }
 
     void disconnectAll(){
         ScopedLock_ lock(slotsMutex);
-        detail::disconnectAll(slots);
+        detail::disconnectAll(slots, isCurrentlyEmitting);
     }
 
-    ~Signal(){ disconnectAll(); }
+    ~Signal(){ assert(isCurrentlyEmitting==false); disconnectAll(); } //upon returning from dtor object is invalid so a pending emit()-call would be invalid too!
 
    private:
-
     typedef typename detail::InvokableImpl<R>::template BoundFunction<A1> Args;
     typedef typename detail::InvokableImpl<R>::template GlobalFunction<A1> GCaller;
 
     template <typename TObj, typename Constness>
     struct MCaller{ typedef typename detail::InvokableImpl<R>::template MemberFunction<TObj, Constness, A1> type; };
 
-    typedef detail::Invokable<R, A1> Slot;
-    typedef typename detail::SlotContainer<Slot*>::type Slots;
+    typedef std::pair<detail::Invokable<R, A1>*,detail::DisconnectionPending> Slot;
+    typedef typename detail::SlotContainer<Slot>::type Slots;
 
     typedef detail::Mutex::type Mutex_;
     typedef detail::ScopedLock::type ScopedLock_;
 
     bool isCurrentlyEmitting = false;
+    Slots pendingConnects;
     Slots slots;
     Mutex_ slotsMutex;
 };
 
 
+
 template <typename R>
 struct Signal<R()> {
 
-
     void connect(R (*member)()) {
         ScopedLock_ lock(slotsMutex);
-        detail::connect(slots,new GCaller(member));
+        detail::connect(isCurrentlyEmitting ? pendingConnects : slots, Slot(new GCaller(member),detail::connected()));
     }
 
     template <typename TObj>
     void connect(TObj& obj, R (TObj::*member)()) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
-        detail::connect(slots,new MCaller_(obj, member));
+        detail::connect(isCurrentlyEmitting ? pendingConnects : slots, Slot(new MCaller_(obj, member),detail::connected()));
     }
 
     template <typename TObj>
     void connect(TObj const& obj, R (TObj::*member)() const) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
-        detail::connect(slots,new MCaller_(obj, member));
+        detail::connect(isCurrentlyEmitting ? pendingConnects : slots, Slot(new MCaller_(obj, member),detail::connected()));
     }
 
     detail::ReturnValueAggregate<R> emit() {
@@ -1099,50 +1188,52 @@ struct Signal<R()> {
         if (isCurrentlyEmitting) return r;
         detail::ScopedInversion inverter(isCurrentlyEmitting);
         detail::ReturnValueAggregator<R>::invokeAndAggregate(r, slots, args);
+        detail::disconnectPending(slots);
+        detail::connectPending(slots, pendingConnects);
         return r;
     }
 
     void disconnect(R (*member)()) {
         ScopedLock_ lock(slotsMutex);
-        detail::disconnect(slots,GCaller(member));
+        detail::disconnect(slots, isCurrentlyEmitting, GCaller(member));
     }
 
     template <typename TObj>
     void disconnect(TObj& obj, R (TObj::*member)()) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<TObj,detail::NonConst>::type MCaller_;
-        detail::disconnect(slots,MCaller_(obj,member));
+        detail::disconnect(slots, isCurrentlyEmitting, MCaller_(obj,member));
     }
 
     template <typename TObj>
-    void disconnect(TObj const & obj, R (TObj::*member)() const) {
+    void disconnect(TObj const& obj, R (TObj::*member)() const) {
         ScopedLock_ lock(slotsMutex);
         typedef typename MCaller<const TObj,detail::Const>::type MCaller_;
-        detail::disconnect(slots,MCaller_(obj,member));
+        detail::disconnect(slots, isCurrentlyEmitting, MCaller_(obj,member));
     }
 
     void disconnectAll(){
         ScopedLock_ lock(slotsMutex);
-        detail::disconnectAll(slots);
+        detail::disconnectAll(slots, isCurrentlyEmitting);
     }
 
-    ~Signal(){ disconnectAll(); }
+    ~Signal(){ assert(isCurrentlyEmitting==false); disconnectAll(); } //upon returning from dtor object is invalid so a pending emit()-call would be invalid too!
 
    private:
-
     typedef typename detail::InvokableImpl<R>::template BoundFunction<void, void, void, void, void, detail::NonDefault> Args;
     typedef typename detail::InvokableImpl<R>::template GlobalFunction<void, void, void, void, void, detail::NonDefault> GCaller;
 
     template <typename TObj, typename Constness>
-    struct MCaller{ typedef typename detail::InvokableImpl<R>::template MemberFunction<TObj, Constness > type; };
+    struct MCaller{ typedef typename detail::InvokableImpl<R>::template MemberFunction<TObj, Constness> type; };
 
-    typedef detail::Invokable<R> Slot;
-    typedef typename detail::SlotContainer<Slot*>::type Slots;
+    typedef std::pair<detail::Invokable<R>*,detail::DisconnectionPending> Slot;
+    typedef typename detail::SlotContainer<Slot>::type Slots;
 
     typedef detail::Mutex::type Mutex_;
     typedef detail::ScopedLock::type ScopedLock_;
 
     bool isCurrentlyEmitting = false;
+    Slots pendingConnects;
     Slots slots;
     Mutex_ slotsMutex;
 };

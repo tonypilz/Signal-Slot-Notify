@@ -712,36 +712,37 @@ int DObj::deletecount = 0;
 
 void testDeleteOnRemove(){
 
-    std::vector<DObj*> v;
+    typedef std::pair<DObj*,bool> P;
+    std::vector<P> v;
 
-    v.push_back(new DObj(1));
-    v.push_back(new DObj(2));
+    v.push_back(P(new DObj(1),false));
+    v.push_back(P(new DObj(2),false));
 
     assert(DObj::deletecount==0);
     assert((int)(v.size())==2);
-    assert(v.front()->id==1);
+    assert(v.front().first->id==1);
 
     const DObj dobj_1(1);
     const DObj dobj_2(2);
 
-    detail::disconnect(v, dobj_1);
+    detail::disconnect(v,false, dobj_1);
 
     assert(DObj::deletecount==1);
     assert((int)(v.size())==1);
-    assert(v.front()->id==2);
+    assert(v.front().first->id==2);
 
-    detail::disconnect(v, dobj_1);
+    detail::disconnect(v,false, dobj_1);
 
     assert(DObj::deletecount==1);
     assert((int)(v.size())==1);
-    assert(v.front()->id==2);
+    assert(v.front().first->id==2);
 
-    detail::disconnect(v, dobj_2);
+    detail::disconnect(v,false, dobj_2);
 
     assert(DObj::deletecount==2);
     assert((int)(v.size())==0);
 
-    detail::disconnect(v, dobj_2);
+    detail::disconnect(v,false, dobj_2);
 
     assert(DObj::deletecount==2);
     assert((int)(v.size())==0);
@@ -1240,25 +1241,646 @@ void testSignal_correct_call_seq_nvoid(){
 
 }
 
-void incrementReference(int& intRef, std::string& sref){ ++intRef; sref.append("s");}
+void incrementReference(int& intRef){ ++intRef;}
+void incrementReference(int& intRef1, std::string& sref1){ ++intRef1; sref1.append("s");}
+void incrementReference(int& intRef1, std::string& sref1, int& intRef2){ ++intRef1; sref1.append("s"); ++intRef2; }
+void incrementReference(int& intRef1, std::string& sref1, int& intRef2, std::string& sref2){ ++intRef1; sref1.append("s"); ++intRef2; sref2.append("t");}
 
-void testSignal_refrences_return(){
+int nvoid_incrementReference(int& intRef){ ++intRef;}
+int nvoid_incrementReference(int& intRef1, std::string& sref1){ ++intRef1; sref1.append("s");}
+int nvoid_incrementReference(int& intRef1, std::string& sref1, int& intRef2){ ++intRef1; sref1.append("s"); ++intRef2; }
+int nvoid_incrementReference(int& intRef1, std::string& sref1, int& intRef2, std::string& sref2){ ++intRef1; sref1.append("s"); ++intRef2; sref2.append("t");}
+
+void testSignal_refrence_test_nvoid(){
 
     {
-        Signal<void(int&,std::string& s)> c;
+        Signal<int(int&,std::string&,int&,std::string&)> c;
+        c.connect(&nvoid_incrementReference);
+        c.connect(&nvoid_incrementReference);
+        c.connect(&nvoid_incrementReference);
+
+        int i1 = 7;
+        int i2 = 17;
+        std::string s1("x");
+        std::string s2("y");
+
+        c.emit(i1,s1,i2,s2);
+
+        assert(i1==10);
+        assert(s1=="xsss");
+        assert(i2==20);
+        assert(s2=="yttt");
+    }
+    {
+        Signal<int(int&,std::string&,int&)> c;
+        c.connect(&nvoid_incrementReference);
+        c.connect(&nvoid_incrementReference);
+        c.connect(&nvoid_incrementReference);
+
+        int i1 = 7;
+        int i2 = 17;
+        std::string s1("x");
+
+
+        c.emit(i1,s1,i2);
+
+        assert(i1==10);
+        assert(s1=="xsss");
+        assert(i2==20);
+    }
+
+    {
+        Signal<int(int&,std::string&)> c;
+        c.connect(&nvoid_incrementReference);
+        c.connect(&nvoid_incrementReference);
+        c.connect(&nvoid_incrementReference);
+
+        int i1 = 7;
+        std::string s1("x");
+
+        c.emit(i1,s1);
+
+        assert(i1==10);
+        assert(s1=="xsss");
+    }
+
+    {
+        Signal<int(int&)> c;
+        c.connect(&nvoid_incrementReference);
+        c.connect(&nvoid_incrementReference);
+        c.connect(&nvoid_incrementReference);
+
+        int i1 = 7;
+
+        c.emit(i1);
+
+        assert(i1==10);
+    }
+
+
+}
+
+void testSignal_refrence_test_void(){
+
+    {
+        Signal<void(int&,std::string&,int&,std::string&)> c;
         c.connect(&incrementReference);
         c.connect(&incrementReference);
         c.connect(&incrementReference);
 
-        int n = 7;
-        std::string x("x");
-        c.emit(n,x);
-        assert(n==10);
-        assert(x=="xsss");
+        int i1 = 7;
+        int i2 = 17;
+        std::string s1("x");
+        std::string s2("y");
+
+        c.emit(i1,s1,i2,s2);
+
+        assert(i1==10);
+        assert(s1=="xsss");
+        assert(i2==20);
+        assert(s2=="yttt");
+    }
+    {
+        Signal<void(int&,std::string&,int&)> c;
+        c.connect(&incrementReference);
+        c.connect(&incrementReference);
+        c.connect(&incrementReference);
+
+        int i1 = 7;
+        int i2 = 17;
+        std::string s1("x");
+
+
+        c.emit(i1,s1,i2);
+
+        assert(i1==10);
+        assert(s1=="xsss");
+        assert(i2==20);
+    }
+
+    {
+        Signal<void(int&,std::string&)> c;
+        c.connect(&incrementReference);
+        c.connect(&incrementReference);
+        c.connect(&incrementReference);
+
+        int i1 = 7;
+        std::string s1("x");
+
+        c.emit(i1,s1);
+
+        assert(i1==10);
+        assert(s1=="xsss");
+    }
+
+    {
+        Signal<void(int&)> c;
+        c.connect(&incrementReference);
+        c.connect(&incrementReference);
+        c.connect(&incrementReference);
+
+        int i1 = 7;
+
+        c.emit(i1);
+
+        assert(i1==10);
+    }
+
+
+}
+
+
+template<typename R>
+struct RObj4 {
+
+
+    Signal<R(A1,A2,A3,A4)> s;
+
+    typedef RObj4<R> Classtype;
+
+    typedef typename detail::MemberFunc<Classtype, detail::NonConst, R, A1,A2,A3,A4>::type Func;
+
+    Func member;
+
+    int connectCalled = 0;
+    int disconnectCalled = 0;
+    int callingCalled = 0;
+
+    R connectMember(A1,A2,A3,A4) {
+        ++connectCalled;
+        s.connect(*this, &Classtype::callingMember);
+    }
+
+
+    R disconnectMember(A1,A2,A3,A4) {
+        ++disconnectCalled;
+        s.disconnect(*this, &Classtype::callingMember);
+    }
+
+    R callingMember(A1 a1,A2 a2,A3 a3 ,A4 a4) {
+        ++callingCalled;
+        Classtype& c(*this);
+        (c.*member)(a1, a2, a3, a4);
+    }
+
+    R emit(A1 a1,A2 a2,A3 a3 ,A4 a4) {
+        s.emit(a1,a2,a3,a4);
+    }
+
+};
+
+template<typename R>
+struct RObj3 {
+
+
+    Signal<R(A1,A2,A3)> s;
+
+    typedef RObj3<R> Classtype;
+
+    typedef typename detail::MemberFunc<Classtype, detail::NonConst, R, A1,A2,A3>::type Func;
+
+    Func member;
+
+    int connectCalled = 0;
+    int disconnectCalled = 0;
+    int callingCalled = 0;
+
+    R connectMember(A1,A2,A3) {
+        ++connectCalled;
+        s.connect(*this, &Classtype::callingMember);
+    }
+
+
+    R disconnectMember(A1,A2,A3) {
+        ++disconnectCalled;
+        s.disconnect(*this, &Classtype::callingMember);
+    }
+
+    R callingMember(A1 a1,A2 a2,A3 a3) {
+        ++callingCalled;
+        Classtype& c(*this);
+        (c.*member)(a1, a2, a3);
+    }
+
+    R emit(A1 a1,A2 a2,A3 a3) {
+        s.emit(a1,a2,a3);
+    }
+
+};
+
+template<typename R>
+struct RObj2 {
+
+
+    Signal<R(A1,A2)> s;
+
+    typedef RObj2<R> Classtype;
+
+    typedef typename detail::MemberFunc<Classtype, detail::NonConst, R, A1,A2>::type Func;
+
+    Func member;
+
+    int connectCalled = 0;
+    int disconnectCalled = 0;
+    int callingCalled = 0;
+
+    R connectMember(A1,A2) {
+        ++connectCalled;
+        s.connect(*this, &Classtype::callingMember);
+    }
+
+
+    R disconnectMember(A1,A2) {
+        ++disconnectCalled;
+        s.disconnect(*this, &Classtype::callingMember);
+    }
+
+    R callingMember(A1 a1,A2 a2) {
+        ++callingCalled;
+        Classtype& c(*this);
+        (c.*member)(a1, a2);
+    }
+
+    R emit(A1 a1,A2 a2) {
+        s.emit(a1,a2);
+    }
+
+};
+
+template<typename R>
+struct RObj1 {
+
+
+    Signal<R(A1)> s;
+
+    typedef RObj1<R> Classtype;
+
+    typedef typename detail::MemberFunc<Classtype, detail::NonConst, R, A1>::type Func;
+
+    Func member;
+
+    int connectCalled = 0;
+    int disconnectCalled = 0;
+    int callingCalled = 0;
+
+    R connectMember(A1) {
+        ++connectCalled;
+        s.connect(*this, &Classtype::callingMember);
+    }
+
+
+    R disconnectMember(A1) {
+        ++disconnectCalled;
+        s.disconnect(*this, &Classtype::callingMember);
+    }
+
+    R callingMember(A1 a1) {
+        ++callingCalled;
+        Classtype& c(*this);
+        (c.*member)(a1);
+    }
+
+    R emit(A1 a1) {
+        s.emit(a1);
+    }
+
+};
+
+template<typename R>
+struct RObj0 {
+
+
+    Signal<R()> s;
+
+    typedef RObj0<R> Classtype;
+
+    typedef typename detail::MemberFunc<Classtype, detail::NonConst, R>::type Func;
+
+    Func member;
+
+    int connectCalled = 0;
+    int disconnectCalled = 0;
+    int callingCalled = 0;
+
+    R connectMember() {
+        ++connectCalled;
+        s.connect(*this, &Classtype::callingMember);
+    }
+
+
+    R disconnectMember() {
+        ++disconnectCalled;
+        s.disconnect(*this, &Classtype::callingMember);
+    }
+
+    R callingMember() {
+        ++callingCalled;
+        Classtype& c(*this);
+        (c.*member)();
+    }
+
+    R emit() {
+        s.emit();
+    }
+
+};
+
+template<typename R>
+void testSignal_recursive_behaviour_connect(){
+
+
+    {
+        typedef RObj4<R> Obj;
+        Obj obj;
+        obj.s.connect(obj, &Obj::callingMember);
+        obj.member = &Obj::connectMember;
+        obj.s.emit(state::a1_default,state::a2_default,state::a3_default,state::a4_default);
+
+        assert(obj.callingCalled == 1);
+        assert(obj.connectCalled == 1);
+        assert(obj.disconnectCalled == 0);
+
+        obj.s.emit(state::a1_default,state::a2_default,state::a3_default,state::a4_default);
+
+        assert(obj.callingCalled == 3);
+        assert(obj.connectCalled == 3);
+        assert(obj.disconnectCalled == 0);
+    }
+
+    {
+        typedef RObj3<R> Obj;
+        Obj obj;
+        obj.s.connect(obj, &Obj::callingMember);
+        obj.member = &Obj::connectMember;
+        obj.s.emit(state::a1_default,state::a2_default,state::a3_default);
+
+        assert(obj.callingCalled == 1);
+        assert(obj.connectCalled == 1);
+        assert(obj.disconnectCalled == 0);
+
+        obj.s.emit(state::a1_default,state::a2_default,state::a3_default);
+
+        assert(obj.callingCalled == 3);
+        assert(obj.connectCalled == 3);
+        assert(obj.disconnectCalled == 0);
+    }
+
+    {
+        typedef RObj2<R> Obj;
+        Obj obj;
+        obj.s.connect(obj, &Obj::callingMember);
+        obj.member = &Obj::connectMember;
+        obj.s.emit(state::a1_default,state::a2_default);
+
+        assert(obj.callingCalled == 1);
+        assert(obj.connectCalled == 1);
+        assert(obj.disconnectCalled == 0);
+
+        obj.s.emit(state::a1_default,state::a2_default);
+
+        assert(obj.callingCalled == 3);
+        assert(obj.connectCalled == 3);
+        assert(obj.disconnectCalled == 0);
+    }
+
+    {
+        typedef RObj1<R> Obj;
+        Obj obj;
+        obj.s.connect(obj, &Obj::callingMember);
+        obj.member = &Obj::connectMember;
+        obj.s.emit(state::a1_default);
+
+        assert(obj.callingCalled == 1);
+        assert(obj.connectCalled == 1);
+        assert(obj.disconnectCalled == 0);
+
+        obj.s.emit(state::a1_default);
+
+        assert(obj.callingCalled == 3);
+        assert(obj.connectCalled == 3);
+        assert(obj.disconnectCalled == 0);
+    }
+
+    {
+        typedef RObj0<R> Obj;
+        Obj obj;
+        obj.s.connect(obj, &Obj::callingMember);
+        obj.member = &Obj::connectMember;
+        obj.s.emit();
+
+        assert(obj.callingCalled == 1);
+        assert(obj.connectCalled == 1);
+        assert(obj.disconnectCalled == 0);
+
+        obj.s.emit();
+
+        assert(obj.callingCalled == 3);
+        assert(obj.connectCalled == 3);
+        assert(obj.disconnectCalled == 0);
     }
 }
+
+template<typename R>
+void testSignal_recursive_behaviour_disconnect(){
+
+    {
+        typedef RObj4<R> Obj;
+        Obj obj;
+        obj.s.connect(obj, &Obj::callingMember);
+        obj.member = &Obj::disconnectMember;
+        obj.s.emit(state::a1_default,state::a2_default,state::a3_default,state::a4_default);
+
+        assert(obj.callingCalled == 1);
+        assert(obj.connectCalled == 0);
+        assert(obj.disconnectCalled == 1);
+
+        obj.s.emit(state::a1_default,state::a2_default,state::a3_default,state::a4_default);
+
+        assert(obj.callingCalled == 1);
+        assert(obj.connectCalled == 0);
+        assert(obj.disconnectCalled == 1);
+    }
+
+    {
+        typedef RObj3<R> Obj;
+        Obj obj;
+        obj.s.connect(obj, &Obj::callingMember);
+        obj.member = &Obj::disconnectMember;
+        obj.s.emit(state::a1_default,state::a2_default,state::a3_default);
+
+        assert(obj.callingCalled == 1);
+        assert(obj.connectCalled == 0);
+        assert(obj.disconnectCalled == 1);
+
+        obj.s.emit(state::a1_default,state::a2_default,state::a3_default);
+
+        assert(obj.callingCalled == 1);
+        assert(obj.connectCalled == 0);
+        assert(obj.disconnectCalled == 1);
+    }
+
+    {
+        typedef RObj2<R> Obj;
+        Obj obj;
+        obj.s.connect(obj, &Obj::callingMember);
+        obj.member = &Obj::disconnectMember;
+        obj.s.emit(state::a1_default,state::a2_default);
+
+        assert(obj.callingCalled == 1);
+        assert(obj.connectCalled == 0);
+        assert(obj.disconnectCalled == 1);
+
+        obj.s.emit(state::a1_default,state::a2_default);
+
+        assert(obj.callingCalled == 1);
+        assert(obj.connectCalled == 0);
+        assert(obj.disconnectCalled == 1);
+    }
+
+    {
+        typedef RObj1<R> Obj;
+        Obj obj;
+        obj.s.connect(obj, &Obj::callingMember);
+        obj.member = &Obj::disconnectMember;
+        obj.s.emit(state::a1_default);
+
+        assert(obj.callingCalled == 1);
+        assert(obj.connectCalled == 0);
+        assert(obj.disconnectCalled == 1);
+
+        obj.s.emit(state::a1_default);
+
+        assert(obj.callingCalled == 1);
+        assert(obj.connectCalled == 0);
+        assert(obj.disconnectCalled == 1);
+    }
+
+    {
+        typedef RObj0<R> Obj;
+        Obj obj;
+        obj.s.connect(obj, &Obj::callingMember);
+        obj.member = &Obj::disconnectMember;
+        obj.s.emit();
+
+        assert(obj.callingCalled == 1);
+        assert(obj.connectCalled == 0);
+        assert(obj.disconnectCalled == 1);
+
+        obj.s.emit();
+
+        assert(obj.callingCalled == 1);
+        assert(obj.connectCalled == 0);
+        assert(obj.disconnectCalled == 1);
+    }
+}
+
+template<typename R>
+void testSignal_recursive_behaviour_emit(){
+
+    {
+        typedef RObj4<R> Obj;
+        Obj obj;
+        obj.s.connect(obj, &Obj::callingMember);
+        obj.member = &Obj::emit;
+        obj.s.emit(state::a1_default,state::a2_default,state::a3_default,state::a4_default);
+
+        assert(obj.callingCalled == 1);
+        assert(obj.connectCalled == 0);
+        assert(obj.disconnectCalled == 0);
+
+        obj.s.emit(state::a1_default,state::a2_default,state::a3_default,state::a4_default);
+
+        assert(obj.callingCalled == 2);
+        assert(obj.connectCalled == 0);
+        assert(obj.disconnectCalled == 0);
+    }
+    {
+        typedef RObj3<R> Obj;
+        Obj obj;
+        obj.s.connect(obj, &Obj::callingMember);
+        obj.member = &Obj::emit;
+        obj.s.emit(state::a1_default,state::a2_default,state::a3_default);
+
+        assert(obj.callingCalled == 1);
+        assert(obj.connectCalled == 0);
+        assert(obj.disconnectCalled == 0);
+
+        obj.s.emit(state::a1_default,state::a2_default,state::a3_default);
+
+        assert(obj.callingCalled == 2);
+        assert(obj.connectCalled == 0);
+        assert(obj.disconnectCalled == 0);
+    }
+
+    {
+        typedef RObj2<R> Obj;
+        Obj obj;
+        obj.s.connect(obj, &Obj::callingMember);
+        obj.member = &Obj::emit;
+        obj.s.emit(state::a1_default,state::a2_default);
+
+        assert(obj.callingCalled == 1);
+        assert(obj.connectCalled == 0);
+        assert(obj.disconnectCalled == 0);
+
+        obj.s.emit(state::a1_default,state::a2_default);
+
+        assert(obj.callingCalled == 2);
+        assert(obj.connectCalled == 0);
+        assert(obj.disconnectCalled == 0);
+    }
+
+    {
+        typedef RObj1<R> Obj;
+        Obj obj;
+        obj.s.connect(obj, &Obj::callingMember);
+        obj.member = &Obj::emit;
+        obj.s.emit(state::a1_default);
+
+        assert(obj.callingCalled == 1);
+        assert(obj.connectCalled == 0);
+        assert(obj.disconnectCalled == 0);
+
+        obj.s.emit(state::a1_default);
+
+        assert(obj.callingCalled == 2);
+        assert(obj.connectCalled == 0);
+        assert(obj.disconnectCalled == 0);
+    }
+
+    {
+        typedef RObj0<R> Obj;
+        Obj obj;
+        obj.s.connect(obj, &Obj::callingMember);
+        obj.member = &Obj::emit;
+        obj.s.emit();
+
+        assert(obj.callingCalled == 1);
+        assert(obj.connectCalled == 0);
+        assert(obj.disconnectCalled == 0);
+
+        obj.s.emit();
+
+        assert(obj.callingCalled == 2);
+        assert(obj.connectCalled == 0);
+        assert(obj.disconnectCalled == 0);
+    }
+
+}
 void testSignal(){
-    testSignal_refrences_return();
+
+    testSignal_recursive_behaviour_connect<int>();
+    testSignal_recursive_behaviour_connect<void>();
+
+    testSignal_recursive_behaviour_disconnect<int>();
+    testSignal_recursive_behaviour_disconnect<void>();
+
+    testSignal_recursive_behaviour_emit<int>();
+    testSignal_recursive_behaviour_emit<void>();
+
+    testSignal_refrence_test_void();
+    testSignal_refrence_test_nvoid();
+
     testSignal_correct_call_seq_void();
     testSignal_correct_call_seq_nvoid();
     testSignal_remove_double_entry();
