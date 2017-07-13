@@ -162,7 +162,7 @@ If data is to be transfered during a notification it must be transfered using a 
 
 ## Fragile
  
-If an observer derives from another observer it could break the other observers observation since the first observer must call the other observer in the notify()-method. So extra care must be exerted in this kind of situations. This is also true for the event ids used in both overserving classes which must not overlap.
+If an observer derives from another observer it will break the other observers observation if it forgets to call the other observers notify()-method. This is also true if the observer uses event-ids used by the other observer.
 
 
 # Notes for embedded use
