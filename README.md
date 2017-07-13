@@ -75,7 +75,7 @@ The example can be played with on [ideone](http://ideone.com/2ooa64).
  - Single header file only
  - Const-Correct
  - Recursion-Correct
- - Customizable synchronization primitives (mutex/scopedLock)
+ - Customizable synchronization (mutex/scopedLock)
  - Customizable handling of return values(1) 
  - Tested
  
@@ -83,7 +83,7 @@ The example can be played with on [ideone](http://ideone.com/2ooa64).
  
 # Limitations
  - Currently up to 4 function arguments are supported. If more are required one can use structs or extend the header file to support more. 
- - Default arguments of slots cannot be used. To make use of them separate functions (with and without arguments) must be used.
+ - Default function-arguments of slots cannot be used so separate functions (with and without arguments) must be provided.
 
 # Comparison to Oberserver-Pattern
 
@@ -135,40 +135,41 @@ int main()
     return 0;
 }
 ```
-This approach contains the following disadvantages compared to the Signal/Slots
+This approach contains the following disadvantages compared to the Signal/Slots:
 
-## Fat Interfaces
-
-Since the notifyAll()-method and therefore the notify()-method must be used for all kinds of notifications they are very likely to provide the maximum amount of information on all notification paths and therefore become fat. An typical example would be to provide if a bool to indicate if some state of the notifier has changed. And since not everyone is interested in the interface is to wide. Also the event-id information is sometimes not necessary and therefore widens also the interface.
-
-## Complexer Type Hierachy
-
-Since observee and observerd must inherit from other classes the type hierarchy is more complex than in the signal slot mechanism. This impairs readability, refacorizablity and also the amount of documentation. 
-
-## Virtual Inheritance
-
-Since a typical project has quite some the obervable classes, chances are that those observable classes will also inherit from each other producing virtual inheritance, which is considered not ideal (see eg. ctor call sequence). 
 
 ## Event-IDs
 
-If an observer is notified by different observables some form of id is usually (1) transfered to identify the caller. This id must then be evaluated by the observer in a switch-like statement. This form of control flow is error prone, harder to read and harder to maintain then just calling different slots.
+If an observer is notified by different observables some form of sender-id must (1) be transfered which is evaluated by the caller in a swicht-like statement to identify the caller. This form of control flow is error prone, harder to read and harder to maintain and doesnt scale well.
 
-(1) Other mechanisms exists, but they are even harder to read and maintain.
+(1) Other mechanisms exists, but they are usually worse.
+
+## Fat Interfaces
+
+Since the notifyAll()-method is beeing used for all notifications it must transmit maximum amount of information an observer could possibly need which is why it provides to much information for average callees. An example would be the event-id which is only used by observers observing mutliple oversables. 
+
+## Complexer Type Hierachy
+
+Observee and the observerd must inherit from base-classes. Therefore the type hierarchy is more complex than in the signal slot mechanism. 
+
+## Virtual Inheritance
+
+A typical project has usually quite a couple of obervable classes. Therefore chances are that they will also inherit from each other producing virtual inheritance, which is considered harmeful. 
 
 ## Data transfer via callback 
 
-If arguments are to be transfered during a notification they must be transfered via callback. This induces a more complex control flow, requires stronger coupling between observable and observed and also introduces additional state which must be taken special care of in eg multithreading environments. Efficiancy might also suffer.
+If data is to be transfered during a notification it must be transfered using a callback mechanism. This induces a more complex control flow, requires stronger coupling between observable and observed class and also introduces additional state which must be taken special care of eg in multithreading environments. Efficiancy also suffers.
 
-## Fragile on inheritance
+## Fragile
  
-Deriving from an observing class and extending the notification-behaviour might break the parents notification behavior. So extra care must be exerted in this kind of situations (also with respect to event-ids) which makes the obsever-pattern more fragile in this respect.
+If an observer derives from another observer it could break the other observers observation since the first observer must call the other observer in the notify()-method. So extra care must be exerted in this kind of situations. This is also true for the event ids used in both overserving classes which must not overlap.
 
 
 # Notes for embedded use
 
-The operator new/delete is used in the following situations:
- 1. calls to connect()
- 2. calls to disconnect()
+By default the operator new/delete is invoked on:
+ 1. calls to connect(),
+ 2. calls to disconnect(),
  3. calls to emit(), if the function signature has a non-void return value and return value aggreation in a container (=default) is used 
  
- The calls can be avoided if non-allocating / non-deallocating container-types are used (eg stack buffers).
+ Invoking new/delete can be avoided if non-allocating / non-deallocating container-types are used (eg stack buffers).
