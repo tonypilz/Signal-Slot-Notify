@@ -87,7 +87,7 @@ The example can be played with on [ideone](http://ideone.com/2ooa64).
 
 # Comparison to Oberserver-Pattern
 
-After employing the observer pattern, the example from the [first paragraph](#signal-slot-notify) might look like this:
+Using the observer pattern, the example from the [first paragraph](#signal-slot-notify) might look like this:
 
 ```cpp
 #include <include/signal_slot.h>
@@ -140,29 +140,29 @@ This approach contains the following disadvantages compared to the Signal/Slots:
 
 ## Event-IDs
 
-If an observer is notified by different observables some form of sender-id must (1) be transfered which is evaluated by the caller in a swicht-like statement to identify the caller. This form of control flow is error prone, harder to read and harder to maintain and doesnt scale well.
+If an observer is notified by different observables some form of sender-id must (1) be transfered which is evaluated by the observer in a swich-like statement to identify the observable instance. This form of control flow is error prone, harder to read and maintain and doesnt scale well.
 
 (1) Other mechanisms exists, but they are usually worse.
 
 ## Fat Interfaces
 
-Since the notifyAll()-method is beeing used for all notifications it must transmit maximum amount of information an observer could possibly need which is why it provides to much information for average callees. An example would be the event-id which is only used by observers observing mutliple oversables. 
+Since the notifyAll()-method is beeing used for all notifications it must transmit maximum amount of information an observer could possibly need which is why it provides too much information for average observer. An example would be the event-id which is only used by observers which are observing multiple observables. 
 
 ## Complexer Type Hierachy
 
-Observee and the observerd must inherit from base-classes. Therefore the type hierarchy is more complex than in the signal slot mechanism. 
+Observable and observerd must inherit from base-classes. Therefore the type hierarchy is more complex than necessary. 
 
 ## Virtual Inheritance
 
-A typical project has usually quite a couple of obervable classes. Therefore chances are that they will also inherit from each other producing virtual inheritance, which is considered harmeful. 
+A typical project has usually quite a couple of obervable classes. Therefore chances are that they will inherit from each other producing virtual inheritance, which is considered harmeful. 
 
 ## Data transfer via callback 
 
-If data is to be transfered during a notification it must be transfered using a callback mechanism. This induces a more complex control flow, requires stronger coupling between observable and observed class and also introduces additional state which must be taken special care of eg in multithreading environments. Efficiancy also suffers.
+If data is to be transfered during a notification it must be transfered via a callback mechanism. This induces a more complex control flow, induces stronger coupling between observable and observed class and also introduces additional state which must be taken special care of eg in multithreading environments. Efficiancy also suffers.
 
 ## Fragile
  
-If an observer derives from another observer it will break the other observers observation if it forgets to call the other observers notify()-method. This is also true if the observer uses event-ids used by the other observer.
+If an observer derives from another observer it will break the other observers observation if it forgets to call the other observers notify()-method. This is also true if the observer uses (by accident) event-ids used by the other observer.
 
 
 # Notes for embedded use
@@ -170,6 +170,6 @@ If an observer derives from another observer it will break the other observers o
 By default the operator new/delete is invoked on:
  1. calls to connect(),
  2. calls to disconnect(),
- 3. calls to emit(), if the function signature has a non-void return value and return value aggreation in a container (=default) is used 
+ 3. calls to emit(), iff the function signature has a non-void return value and return value aggreation in a container (=default) is used 
  
  Invoking new/delete can be avoided if non-allocating / non-deallocating container-types are used (eg stack buffers).
